@@ -2,10 +2,10 @@
 
 export(getFootprint)
 importFrom(GenomeInfoDb,Seqinfo)
+importFrom(GenomicRanges,GRanges)
 importFrom(GenomicRanges,GRangesList)
 importFrom(GenomicRanges,disjoin)
 importFrom(GenomicRanges,findOverlaps)
-importFrom(GenomicRanges,makeGRangesFromDataFrame)
 importFrom(S4Vectors,queryHits)
 importFrom(S4Vectors,subjectHits)
 importFrom(data.table,fread)

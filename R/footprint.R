@@ -2,7 +2,7 @@
 #' @importFrom data.table fread
 #' @importFrom stringr str_replace
 #' @importFrom GenomeInfoDb Seqinfo
-#' @importFrom GenomicRanges makeGRangesFromDataFrame GRangesList
+#' @importFrom GenomicRanges GRangesList GRanges
 GetBioFeatures <- function(bio.features.loc = NULL, search.term = NULL) {
   if (!is.null(bio.features.loc)) {
     bio.features.loc <- str_replace(bio.features.loc, "/$", "")
