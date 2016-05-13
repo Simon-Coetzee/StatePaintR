@@ -4,7 +4,7 @@
 #' @importFrom GenomeInfoDb Seqinfo
 #' @importFrom GenomicRanges GRangesList GRanges
 #' @importFrom IRanges IRanges
-#' @importFrom S4Vectors mcols
+#' @importFrom S4Vectors mcols mcols<-
 GetBioFeatures <- function(bio.features.loc = NULL, search.term = NULL) {
   if (!is.null(bio.features.loc)) {
     bio.features.loc <- str_replace(bio.features.loc, "/$", "")
