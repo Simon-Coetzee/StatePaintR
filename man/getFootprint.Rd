@@ -4,11 +4,11 @@
 \alias{getFootprint}
 \title{getFootprint}
 \usage{
-getFootprint(directory = NULL, celltype = NULL, deftable = NULL,
-  deflookup = NULL)
+getFootprint(directory = NULL, search = NULL, chrome_states = "default",
+  translation_layer = "default")
 }
 \arguments{
-\item{deftable}{}
+\item{translation_layer}{}
 }
 \description{
 getFootprint

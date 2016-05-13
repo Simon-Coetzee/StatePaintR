@@ -8,7 +8,7 @@
 GetBioFeatures <- function(bio.features.loc = NULL, search.term = NULL) {
   if (!is.null(bio.features.loc)) {
     bio.features.loc <- str_replace(bio.features.loc, "/$", "")
-    peakfiles.pat <- ".bed$|.broadPeak$|.narrowPeak$|.gappedPeak$|.bed.gz$|.broadPeak.gz$|.narrowPeak.gz$|.gappedPeak.gz$"
+    peakfiles.pat <- ".bed$|.broadPeak$|.narrowPeak$|.gappedPeak$"
     get.files <- list.files(path = bio.features.loc, pattern = peakfiles.pat, full.names = TRUE)
     if(!is.null(search.term)) {
       get.files <- get.files[grepl(search.term, get.files, ignore.case = TRUE)]
@@ -35,6 +35,9 @@ GetBioFeatures <- function(bio.features.loc = NULL, search.term = NULL) {
       names(bed.list) <- sub("(.*)\\..*", "\\1", basename(get.files))
     } else {
       bed.list <- NULL
+      stop("No files matching search term, try a new search term\n",
+           "and make sure that the directory contains files ending in\n",
+           ".bed, .broadPeak, .narrowPeak, or .gappedPeak")
     }
     if (is.null(bed.list)) {
       return(GRangesList())
@@ -69,8 +72,9 @@ footprintlookup <- function(query, definition) {
 #' getFootprint
 #'
 #' @param directory
-#' @param celltype
-#' @param deftable
+#' @param search
+#' @param
+#' @param translation_layer
 #'
 #' @return
 #' @importFrom GenomicRanges disjoin findOverlaps
@@ -79,9 +83,10 @@ footprintlookup <- function(query, definition) {
 #' @export
 #'
 #' @examples
-getFootprint <- function(directory = NULL, celltype = NULL, deftable = NULL, deflookup = NULL) {
-  message(paste("searching for", celltype, Sys.time(), sep = " "))
-  if(is.null(deflookup)) {
+getFootprint <- function(directory = NULL, search = NULL, chrome_states = "default",
+                         translation_layer = "default") {
+  message(paste("searching for", search, Sys.time(), sep = " "))
+  if(translation_layer == "default") {
     deflookup <- list(h3k4me1 = "Regulatory",
                       h3k4me3 = "Promoter",
                       h3k27ac = "Active",
@@ -90,16 +95,30 @@ getFootprint <- function(directory = NULL, celltype = NULL, deftable = NULL, def
                       h3k9me3 = "Heterochromatin",
                       h3k9ac = "Active",
                       dnase = "Core",
+                      atac = "Core",
                       tf = "Core",
                       ctcf = "CTCF")
   } else {
-    if(class(deflookup) != "list") {
-      stop("no deflookup list")
+    if(class(translation_layer) != "list") {
+      stop("translation layer must be a list")
     }
+    deflookup <- translation_layer
   }
-  x <- GetBioFeatures(directory, celltype)
+  if(is.null(directory)) {stop("Please supply a directory with your genomic intervals")}
+  if(is.null(search)) {warning(paste0("Using all files in the directory: ", directory, "\n",
+                                      " to construct a single footprint. Use the 'search'\n",
+                                      " argument to restrict")); Sys.sleep(5)}
+  if(chrome_states == "default") {
+    d <- Cedars.BFG.states
+  } else {
+    d <- as.matrix(read.table(chrome_states, row.names = 1))
+  }
+  x <- GetBioFeatures(directory, search)
   # create query set
   x.f <- disjoin(unlist(x))
+  if(length(x) == 1) {
+    x.f <- x.f[[1]]
+  }
   overlaps <- findOverlaps(x.f, x)
   qover <- queryHits(overlaps)
   sover <- subjectHits(overlaps)
@@ -112,15 +131,15 @@ getFootprint <- function(directory = NULL, celltype = NULL, deftable = NULL, def
   inputset <- sapply(inputset, function(x, y = deflookup) { unname(y[str_detect(x, names(y))]) } )
   inputset.c <- names(inputset)
   names(inputset.c) <- inputset
-  d <- as.matrix(read.table(deftable, row.names = 1))
-
-  ## Okay lets already filter by what can be called
-  ## remove footprint ids that require data that is missing.
-  ## remove footprint ids that should not be called based upon having data - something like 2L
   nameorder <- inputset.c[colnames(d)[colnames(d) %in% names(inputset.c)]]
   resmatrix <- matrix(overlap.table, nrow = nrow(overlap.table),
-                       dimnames = list(rownames(overlap.table),
-                                       tolower(colnames(overlap.table))))[, nameorder]
+                      dimnames = list(rownames(overlap.table),
+                                      tolower(colnames(overlap.table))))[, nameorder]
+  if(!inherits(resmatrix, "matrix")) {
+    dim(resmatrix) <- c(length(resmatrix), 1)
+    dimnames(resmatrix) <- list(rownames(overlap.table),
+                                tolower(colnames(overlap.table)))
+  }
   colnames(resmatrix) <- names(nameorder)
   resmatrix[resmatrix == 0L] <- 2L
   resmatrix[resmatrix == 1L] <- 3L
