@@ -1,0 +1,10 @@
+Package: footprintR
+Type: Package
+Title: Annotate Chromatin Footprints
+Version: 0.1.0
+Author: Simon Coetzee
+Maintainer: Simon Coetzee <simon.coetzee@cshs.org>
+Description: It does things.
+License: GPL-3
+LazyData: TRUE
+RoxygenNote: 5.0.1
