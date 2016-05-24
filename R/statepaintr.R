@@ -83,7 +83,7 @@ footprintlookup <- function(query, definition) {
 #' @export
 #'
 #' @examples
-getFootprint <- function(directory = NULL, search = NULL, chrome_states = "default",
+PaintStates <- function(directory = NULL, search = NULL, chrome_states = "default",
                          translation_layer = "default") {
   message(paste("searching for", search, Sys.time(), sep = " "))
   if(translation_layer == "default") {

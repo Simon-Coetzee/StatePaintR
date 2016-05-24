@@ -1,4 +1,4 @@
-Package: footprintR
+Package: StatePaintR
 Type: Package
 Title: Annotate Chromatin Footprints
 Version: 0.1.0
