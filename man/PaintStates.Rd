@@ -4,7 +4,7 @@
 \alias{PaintStates}
 \title{getFootprint}
 \usage{
-PaintStates(directory = NULL, search = NULL, chrome_states = "default",
+PaintStates(manifest = NULL, chrome_states = "default",
   translation_layer = "default")
 }
 \arguments{
