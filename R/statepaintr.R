@@ -78,7 +78,13 @@ parse.manifest <- function(manifest = NULL) {
   if(length(unique(sort(manifest.df$BUILD))) > 1) {
     stop("each celltype must be described by one and only one genome build")
   }
+  alls <- manifest.df[manifest.df$SAMPLE == "ALL", ]
+  manifest.df <- manifest.df[manifest.df$SAMPLE != "ALL", ]
   by.sample <- split(manifest.df, manifest.df$SAMPLE)
+  by.sample <- lapply(by.sample, function(out, add = alls) {
+    out <- rbind(out, add)
+    return(out)
+  })
   names(by.sample) <- tolower(names(by.sample))
   return(by.sample)
 }
@@ -163,7 +169,10 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
     x <- GetBioFeatures(manifest = cell.sample)
     names(x) <- tolower(names(x))
     inputset <- names(x)
-    inputset <- sapply(inputset, function(x, y = deflookup) { unname(y[str_detect(x, names(y))]) })
+    inputset <- sapply(inputset, function(x, y = deflookup) {
+      out <- unlist(y[str_detect(x, names(y))], use.names = FALSE)
+      return(out)
+      })
     names(x) <- inputset
     # multiple marks with the same meaning
     to.merge <- inputset[duplicated(inputset)]
