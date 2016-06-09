@@ -223,7 +223,8 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
       d <- d[rowSums(d.m) < 1, colnames(d) %in% colnames(resmatrix)]
     }
     d <- d[order(rowSums(d, na.rm = TRUE), decreasing = FALSE), ]
-    mcols(x.f)$footprint <- footprintlookup(resmatrix, d)[, 1]
+    mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
+    mcols(x.f)$state <- footprintlookup(resmatrix, d)[, 1]
     output <- c(output, x.f)
   }
   if(length(samples) > 1) {
