@@ -127,7 +127,7 @@ capwords <- function(s, strict = FALSE) {
 #' @return
 #' @importFrom GenomicRanges disjoin findOverlaps reduce
 #' @importFrom S4Vectors queryHits subjectHits
-#' @importFrom stringr str_detect
+#' @importFrom stringr str_detect coll
 #' @export
 #'
 #' @examples
@@ -170,7 +170,7 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
     names(x) <- tolower(names(x))
     inputset <- names(x)
     inputset <- sapply(inputset, function(x, y = deflookup) {
-      out <- unlist(y[str_detect(x, names(y))], use.names = FALSE)
+      out <- unlist(y[str_detect(x, paste0(names(y), "$"))], use.names = FALSE)
       return(out)
       })
     names(x) <- inputset
