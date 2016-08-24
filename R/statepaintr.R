@@ -236,6 +236,18 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
   return(output)
 }
 
+get.states <- function(name, repo = "Simon-Coetzee/StateHub") {
+  save.loc <- tempfile()
+  chrom.state.loc <- paste0("https://raw.githubusercontent.com/",
+                            repo, "/master/states/", name, ".tab")
+  chrom.states <- read.delim(chrom.state.loc, sep = "\t", row.names = 1)
+  translation.layer.loc <- paste0("https://raw.githubusercontent.com/",
+                                  repo, "/master/translation_layers/", name, ".Rda")
+  download.file(translation.layer.loc, destfile = save.loc, quiet = TRUE)
+  translation.layer <- load(save.loc)
+  return(list(chrom.state = chrom.states, translation.layer = eval(parse(text = translation.layer))))
+}
+
 #' @importFrom dplyr left_join
 write.state <- function(x, y, color, file = stdout()) {
   manifest <- y
