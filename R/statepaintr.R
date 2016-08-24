@@ -226,6 +226,13 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
     d <- d[order(rowSums(d, na.rm = TRUE), decreasing = FALSE), ]
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
     mcols(x.f)$state <- footprintlookup(resmatrix, d)[, 1]
+    x.f.l <- split(x.f, x.f$state)
+    x.f.l <- lapply(x.f.l, reduce)
+    for(state.name in names(x.f.l)) {
+      mcols(x.f.l[[state.name]])$name <- cell.sample[1, "SAMPLE"]
+      mcols(x.f.l[[state.name]])$state <- state.name
+    }
+    x.f <- sort(do.call(c, unlist(x.f.l, use.names = FALSE)))
     output <- c(output, x.f)
   }
   if(length(samples) > 1) {
@@ -264,7 +271,7 @@ write.state <- function(x, y, color, file = stdout()) {
     colnames(my.cols) <- c("sample", "name", "itemRgb")
     mcols(x) <- my.cols
   } else {
-    # stop("non default column names in input data, meta data may be name and sample")
+    stop("non default column names in input data, meta data may be name and sample")
   }
   file <- file(file, "w+")
   writeLines(paste("# this file was produced by", meta$software), file)
