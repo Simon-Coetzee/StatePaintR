@@ -220,6 +220,7 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
     if(length(missing.data) > 0){
       d.m <- d[, missing.data] > 1
       d.m[is.na(d.m)] <- FALSE
+      if(!inherits(d.m, "matrix")) d.m <- matrix(d.m, ncol = 1, dimnames = list(c(names(d.m)), c("SAMPLE")))
       d <- d[rowSums(d.m) < 1, colnames(d) %in% colnames(resmatrix)]
     }
     d <- d[order(rowSums(d, na.rm = TRUE), decreasing = FALSE), ]
@@ -235,7 +236,8 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
   return(output)
 }
 
-write.state <- function(x, y, file = stdout()) {
+#' @importFrom dplyr left_join
+write.state <- function(x, y, color, file = stdout()) {
   manifest <- y
   meta <- list(software = "StatePaintR",
                version = packageVersion("StatePaintR"),
@@ -244,17 +246,27 @@ write.state <- function(x, y, file = stdout()) {
                              manifest$MARK,
                              manifest$FILE,
                              sep = " "))
-  file <- file(file, "w")
+  if(all(names(mcols(x)) == c("name", "state"))) {
+    my.cols <- data.frame(mcols(x), stringsAsFactors = FALSE)
+    my.cols <- left_join(my.cols, color, by = c("state" = "STATE"))
+    colnames(my.cols) <- c("sample", "name", "itemRgb")
+    mcols(x) <- my.cols
+  } else {
+    # stop("non default column names in input data, meta data may be name and sample")
+  }
+  file <- file(file, "w+")
   writeLines(paste("# this file was produced by", meta$software), file)
   writeLines(paste("# version number:", meta$version), file)
   writeLines("# it is the chromatin segmentation of the following files: ", file)
   writeLines(meta$files, file)
-  my.track <- paste0("track name='StatePaintR Segmentation for ",
-                     manifest$SAMPLE[[1]], "' db='",
-                     x@seqinfo@genome[[1]])
-  browser()
+  my.track <- new("BasicTrackLine",
+                  itemRgb = TRUE,
+                  db = x@seqinfo@genome[[1]],
+                  name = manifest$SAMPLE[[1]],
+                  description = paste0("StatePaintR Segmentation for ",
+                                       manifest$SAMPLE[[1]]))
   rtracklayer::export.bed(x, file,
-                          trackLine = as(my.track, "BasicTrackLine"))
+                          trackLine = my.track)
   close(file)
 }
 
@@ -263,13 +275,16 @@ write.state <- function(x, y, file = stdout()) {
 #' @return
 #' @export
 #' @example
-ExportStatePaintR <- function(states, output.dir = tempdir()) {
+ExportStatePaintR <- function(states, color.key = Cedars.BFG.colors, output.dir = tempdir()) {
   m.data <- attributes(states)$manifest
+  color.value <- strsplit(color.key$COLOR, ",")
+  color.key$COLOR <- sapply(color.value, function(x)
+    rgb(x[1], x[2], x[3], maxColorValue=255))
   for(state in seq_along(states)) {
     s.name <- names(m.data)[state]
     s.m.data <- m.data[[state]]
     state <- states[[state]]
-    write.state(state, m.data,
+    write.state(state, s.m.data, color.key,
                 file.path(output.dir,
                           paste0(s.name, ".segmentation.bed")))
   }
