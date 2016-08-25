@@ -109,6 +109,8 @@ footprintlookup <- function(query, definition) {
   return(qr)
 }
 
+#footprintlookup.c <- compiler::cmpfun(footprintlookup)
+
 #from toupper documentation
 capwords <- function(s, strict = FALSE) {
   cap <- function(s) paste(toupper(substring(s, 1, 1)),
@@ -127,7 +129,7 @@ capwords <- function(s, strict = FALSE) {
 #' @return
 #' @importFrom GenomicRanges disjoin findOverlaps reduce
 #' @importFrom S4Vectors queryHits subjectHits
-#' @importFrom stringr str_detect coll
+#' @importFrom stringr str_detect coll str_replace
 #' @export
 #'
 #' @examples
@@ -199,6 +201,14 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
     if(length(x) == 1) {
       x.f <- x.f[[1]]
     }
+    dontbreak <- str_replace(inputset[grep(pattern = "^\\*", inputset)], "^\\*", "")
+    inputset <- stringr::str_replace(inputset, "^\\*", "")
+    if(length(dontbreak) > 0) {
+      x.f <- x.f[x.f %outside% x[dontbreak]]
+      unfrag <- reduce(sort(do.call(c, list(unlist(x[dontbreak]), ignore.mcols = TRUE))))
+      x.f <- c(x.f, unfrag, ignore.mcols = TRUE)
+      x.f <- sort(x.f)
+    }
     overlaps <- findOverlaps(x.f, x)
     qover <- queryHits(overlaps)
     sover <- subjectHits(overlaps)
@@ -225,7 +235,7 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
     }
     d <- d[order(rowSums(d, na.rm = TRUE), decreasing = FALSE), ]
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
-    mcols(x.f)$state <- footprintlookup(resmatrix, d)[, 1]
+    system.time(mcols(x.f)$state <- footprintlookup(resmatrix, d)[, 1])
     x.f.l <- split(x.f, x.f$state)
     x.f.l <- lapply(x.f.l, reduce)
     for(state.name in names(x.f.l)) {
