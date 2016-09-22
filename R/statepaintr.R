@@ -121,9 +121,8 @@ capwords <- function(s, strict = FALSE) {
 
 #' getFootprint
 #'
-#' @param directory
-#' @param search
-#' @param
+#' @param manifest
+#' @param chrome_states
 #' @param translation_layer
 #'
 #' @return
