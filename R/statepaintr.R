@@ -90,14 +90,12 @@ parse.manifest <- function(manifest = NULL) {
 }
 
 footprintlookup <- function(query, definition) {
-  q <- t(query)
-  qr <- matrix(nrow = dim(q)[2])
+  qr <- matrix(nrow = dim(query)[2])
   for(i in 1:nrow(definition)) {
     d <- definition[i, ]
     qt <- q[!is.na(d), ]
     d <- d[!is.na(d)]
     mn <- dim(qt)
-    ## need to find a way to prioritise rules where MSB == 1
     x <- .colSums((bitwAnd(d, 1L) == bitwAnd(qt, 1L)) |
                     (bitwAnd(d, 2L) == 0L &
                        qt == 0L),
@@ -109,9 +107,8 @@ footprintlookup <- function(query, definition) {
   return(qr)
 }
 
-#footprintlookup.c <- compiler::cmpfun(footprintlookup)
 
-#from toupper documentation
+## from toupper documentation
 capwords <- function(s, strict = FALSE) {
   cap <- function(s) paste(toupper(substring(s, 1, 1)),
                            {s <- substring(s, 2); if(strict) tolower(s) else s},
@@ -234,7 +231,8 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
     }
     d <- d[order(rowSums(d, na.rm = TRUE), decreasing = FALSE), ]
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
-    system.time(mcols(x.f)$state <- footprintlookup(resmatrix, d)[, 1])
+    resmatrix.t <- t(resmatrix)
+    system.time(mcols(x.f)$state <- footprintlookup(resmatrix.t, d)[, 1])
     x.f.l <- split(x.f, x.f$state)
     x.f.l <- lapply(x.f.l, reduce)
     for(state.name in names(x.f.l)) {
