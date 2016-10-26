@@ -152,7 +152,7 @@ PaintStates <- function(manifest, decisionMatrix) {
                               "and the mark that was ChIPed")}
   if(missing(decisionMatrix)) {stop("provide a decisionMatrix object")}
   if(is(decisionMatrix, "decisionMatrix")) {
-    translation_layer <- translationLayer(decisionMatrix)
+    deflookup <- translationLayer(decisionMatrix)
     d <- decisionMatrix(decisionMatrix)
   } else {
     stop("arg: decisionMatrix must be object of class decisionMatrix")
