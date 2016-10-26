@@ -4,8 +4,7 @@
 \alias{PaintStates}
 \title{getFootprint}
 \usage{
-PaintStates(manifest = NULL, chrome_states = "default",
-  translation_layer = "default")
+PaintStates(manifest, decisionMatrix)
 }
 \arguments{
 \item{translation_layer}{}

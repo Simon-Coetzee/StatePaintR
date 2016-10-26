@@ -5,17 +5,17 @@
 #' @importFrom GenomicRanges GRangesList GRanges
 #' @importFrom IRanges IRanges
 #' @importFrom S4Vectors mcols mcols<-
-#' @importFrom readr read_tsv
+#' @importFrom readr read_tsv cols_only col_character col_integer
 GetBioFeatures <- function(manifest = NULL, forcemerge = FALSE) {
-  gzipfiles <- manifest[grepl(".gz$", manifest$FILE), ]
+  # gzipfiles <- manifest[grepl(".gz$", manifest$FILE), ]
   good.files <- sapply(split(manifest, 1:nrow(manifest)), function(x) { file.exists(x$FILE) })
   if(sum(good.files) < nrow(manifest)) {
     stop(paste0("cannot find file: ", manifest[!good.files, "FILE"], "\n"))
   }
-  if(length(gzipfiles) >= 1) {
-    manifest[grepl(".gz$", manifest$FILE), "FILE"] <- paste(gzipfiles$OPENWITH,
-                                                            "<", gzipfiles$FILE)
-  }
+  # if(length(gzipfiles) >= 1) {
+  #   manifest[grepl(".gz$", manifest$FILE), "FILE"] <- paste(gzipfiles$OPENWITH,
+  #                                                           "<", gzipfiles$FILE)
+  # }
   get.files <- split(manifest, 1:nrow(manifest))
   names(get.files) <- paste(manifest$SAMPLE, manifest$MARK, sep = "_")
   #if(anyDuplicated(names(get.files))) {
@@ -26,12 +26,18 @@ GetBioFeatures <- function(manifest = NULL, forcemerge = FALSE) {
     my.seqinfo <- Seqinfo(genome = manifest[1, "BUILD"])
     bed.list <- lapply(get.files,
                        function(x, s.info) {
-                         xf <- fread(input = x$FILE, sep = "\t", header = FALSE,
-                                     select = c(1:3), skip = "chr",
-                                     col.names = c("chr", "start", "end"),
-                                     encoding = "UTF-8",
-                                     stringsAsFactors = FALSE,
-                                     data.table = FALSE, showProgress = FALSE)
+                         if(any(grepl(".gz$", x$FILE))) {
+                           xf <- suppressWarnings(read_tsv(file = x$FILE, col_names = c("chr", "start", "end"),
+                                                           col_types = cols_only(chr = col_character(), start = col_integer(), end = col_integer()),
+                                                           progress = FALSE))
+                         } else {
+                           xf <- fread(input = x$FILE, sep = "\t", header = FALSE,
+                                       select = c(1:3), skip = "chr",
+                                       col.names = c("chr", "start", "end"),
+                                       encoding = "UTF-8",
+                                       stringsAsFactors = FALSE,
+                                       data.table = FALSE, showProgress = FALSE)
+                         }
                          name <- paste(x$SAMPLE, x$MARK, sep = "_")
                          xf <- GRanges(seqnames = xf$chr,
                                        ranges = IRanges(start = xf$start + 1L,
@@ -74,19 +80,19 @@ parse.manifest <- function(manifest = NULL) {
       manifest.df[!files.good, "FILE"] <- test.files
     }
   }
-  manifest.df$OPENWITH <- "DEFAULT"
-  if(any(grepl(".gz$", manifest.df$FILE))) {
-    gzipper <- switch(Sys.info()[["sysname"]],
-                      Linux  = Sys.which("zcat"),
-                      Darwin = Sys.which("gzcat"),
-                      ...    = c(zcat = ""))
-    if(gzipper == "" | (gzipper == "zcat" | gzipper == "gzcat")) {
-        stop("some of your files are gzipped, and the (g)zcat command cannot \n",
-             "be found on your system")
-    } else {
-      manifest.df[grepl(".gz$", manifest.df$FILE), "OPENWITH"] <- gzipper
-    }
-  }
+  # manifest.df$OPENWITH <- "DEFAULT"
+  # if(any(grepl(".gz$", manifest.df$FILE))) {
+  #   gzipper <- switch(Sys.info()[["sysname"]],
+  #                     Linux  = Sys.which("zcat"),
+  #                     Darwin = Sys.which("gzcat"),
+  #                     ...    = c(zcat = ""))
+  #   if(gzipper == "" | (gzipper == "zcat" | gzipper == "gzcat")) {
+  #       stop("some of your files are gzipped, and the (g)zcat command cannot \n",
+  #            "be found on your system")
+  #   } else {
+  #     manifest.df[grepl(".gz$", manifest.df$FILE), "OPENWITH"] <- gzipper
+  #   }
+  # }
   if(length(unique(sort(manifest.df$BUILD))) > 1) {
     stop("each celltype must be described by one and only one genome build")
   }
@@ -141,40 +147,17 @@ capwords <- function(s, strict = FALSE) {
 #' @export
 #'
 #' @examples
-PaintStates <- function(manifest = NULL, chrome_states = "default",
-                        translation_layer = "default") {
-  if(inherits(translation_layer, "list")) {
-    deflookup <- translation_layer
-    names(deflookup) <- tolower(names(deflookup))
-  } else {
-    if(translation_layer == "default") {
-      deflookup <- list(h3k4me1 = "Regulatory",
-                        h3k4me3 = "Promoter",
-                        h3k27ac = "Active",
-                        h3k27me3 = "Polycomb",
-                        h3k36me3 = "Transcription",
-                        h3k9me3 = "Heterochromatin",
-                        h3k9ac = "Active",
-                        dnase = "Core",
-                        atac = "Core",
-                        tf = "Core",
-                        ctcf = "CTCF")
-    } else {
-      stop("translation layer must be a list with translations or the string 'default'")
-    }
-  }
-  if(is.null(manifest)) {stop("provide a manifest describing the location of your files \n",
+PaintStates <- function(manifest, decisionMatrix) {
+  if(missing(manifest)) {stop("provide a manifest describing the location of your files \n",
                               "and the mark that was ChIPed")}
-  if(inherits(chrome_states, "data.frame")) {
-    d <- as.matrix(chrome_states)
-  } else if(chrome_states == "default") {
-    d <- Cedars.BFG.states
-  } else if(inherits(chrome_states, "character")) {
-    d <- as.matrix(read.table(chrome_states, row.names = 1))
+  if(missing(decisionMatrix)) {stop("provide a decisionMatrix object")}
+  if(is(decisionMatrix, "decisionMatrix")) {
+    translation_layer <- translationLayer(decisionMatrix)
+    d <- decisionMatrix(decisionMatrix)
+  } else {
+    stop("arg: decisionMatrix must be object of class decisionMatrix")
   }
-  if (!is.null(manifest)) {
-    samples <- parse.manifest(manifest)
-  }
+  samples <- parse.manifest(manifest)
   output <- list()
   for(cell.sample in seq_along(samples)) {
     cell.sample <- samples[[cell.sample]]
@@ -264,18 +247,6 @@ PaintStates <- function(manifest = NULL, chrome_states = "default",
   return(output)
 }
 
-get.states <- function(name, repo = "Simon-Coetzee/StateHub") {
-  save.loc <- tempfile()
-  chrom.state.loc <- paste0("https://raw.githubusercontent.com/",
-                            repo, "/master/states/", name, ".tab")
-  chrom.states <- read.delim(chrom.state.loc, sep = "\t", row.names = 1)
-  translation.layer.loc <- paste0("https://raw.githubusercontent.com/",
-                                  repo, "/master/translation_layers/", name, ".Rda")
-  download.file(translation.layer.loc, destfile = save.loc, quiet = TRUE)
-  translation.layer <- load(save.loc)
-  return(list(chrom.state = chrom.states, translation.layer = eval(parse(text = translation.layer))))
-}
-
 #' @importFrom dplyr left_join
 write.state <- function(x, y, color, file = stdout()) {
   manifest <- y
@@ -344,3 +315,91 @@ ExportStatePaintR <- function(states, color.key = Cedars.BFG.colors, output.dir 
   }
   message("segmentation files written to: ", output.dir)
 }
+
+produce.state <- function(state.obj, position = 1) {
+  state <- state.obj[[position]]
+  order <- sapply(state$features, function(x) {x$order})
+  value <- sapply(state$features, function(x) {x$score})
+  name <- sapply(state$features, function(x) {x$name})
+  output <- value[order]
+  output[output == -1] <- NA
+  names(output) <- name[order]
+  return(output)
+}
+
+#' Retrieve Decision Matrix from StateHub
+#'
+#' @param search
+#'
+#' @return
+#' @importFrom httr content GET http_error modify_url
+#' @export
+#'
+#' @examples
+get.decision.matrix <- function(search) {
+  if(missing(search)) { stop("missing search argument") }
+  stateHub <- modify_url("http://statehub.org/statehub", path = "statehub/getmodel.jsp")
+  query <- GET(stateHub, query = list(id = search))
+  if(http_error(query)) {
+    query <- GET(stateHub, query = list(search = search))
+    if(http_error(query)) { stop("site not availible") }
+    if(length(query) < 1) { stop("no search results found") }
+  }
+  query <- content(query)
+  for(query.i in seq_along(query)) {
+    query.result <- query[[query.i]]
+    state.names <- sapply(query.result$states, function(x) {x$name})
+    for(state in seq_along(query.result$states)) {
+      if(state == 1) {
+        decision.matrix <- produce.state(query.result$states, state)
+      } else {
+        decision.matrix <- rbind(decision.matrix, produce.state(query.result$states, state))
+      }
+    }
+    rownames(decision.matrix) <- state.names
+    decision.matrix <- new("decisionMatrix",
+                           id = query.result[["id"]],
+                           name = query.result[["name"]],
+                           author = query.result[["author"]],
+                           revision = query.result[["revision"]],
+                           description = query.result[["description"]],
+                           translation.layer = query.result[["translation"]],
+                           decision.matrix = decision.matrix)
+    if(query.i > 1) {
+      output <- c(output, decision.matrix)
+    } else {
+      output <- decision.matrix
+    }
+  }
+  return(output)
+}
+
+setClass(Class = "decisionMatrix",
+         slots = list(id = "character",
+                      name = "character",
+                      author = "character",
+                      revision = "character",
+                      description = "character",
+                      translation.layer = "list",
+                      decision.matrix = "matrix"))
+setMethod("show",
+          signature = signature(object = "decisionMatrix"),
+          function(object) {
+            cat(" ID:", object@id, "\n",
+                "Name:", object@name, "\n",
+                "Author:", object@author, "\n",
+                "Revision:", object@revision, "\n",
+                "Description:", object@description, "\n")
+          })
+setGeneric("decisionMatrix", function(object) standardGeneric("decisionMatrix"))
+setMethod("decisionMatrix",
+          signature = signature(object = "decisionMatrix"),
+          function(object) {
+            object@decision.matrix
+          })
+setGeneric("translationLayer", function(object) standardGeneric("translationLayer"))
+setMethod("translationLayer",
+          signature = signature(object = "decisionMatrix"),
+          function(object) {
+            object@translation.layer
+          })
