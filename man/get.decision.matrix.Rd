@@ -7,7 +7,10 @@
 get.decision.matrix(search)
 }
 \arguments{
-\item{search}{}
+\item{search}{character string of either unique id, or search term.}
+}
+\value{
+decisionMatrix object
 }
 \description{
 Retrieve Decision Matrix from StateHub

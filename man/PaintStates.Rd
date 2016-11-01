@@ -4,10 +4,10 @@
 \alias{PaintStates}
 \title{getFootprint}
 \usage{
-PaintStates(manifest, decisionMatrix)
+PaintStates(manifest, decisionMatrix, progress = TRUE)
 }
 \arguments{
-\item{translation_layer}{}
+\item{decisionMatrix}{}
 }
 \description{
 getFootprint

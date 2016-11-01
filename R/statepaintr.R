@@ -137,8 +137,7 @@ capwords <- function(s, strict = FALSE) {
 #' getFootprint
 #'
 #' @param manifest
-#' @param chrome_states
-#' @param translation_layer
+#' @param decisionMatrix
 #'
 #' @return
 #' @importFrom GenomicRanges disjoin findOverlaps reduce
@@ -147,19 +146,24 @@ capwords <- function(s, strict = FALSE) {
 #' @export
 #'
 #' @examples
-PaintStates <- function(manifest, decisionMatrix) {
+PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
   if(missing(manifest)) {stop("provide a manifest describing the location of your files \n",
                               "and the mark that was ChIPed")}
   if(missing(decisionMatrix)) {stop("provide a decisionMatrix object")}
   if(is(decisionMatrix, "decisionMatrix")) {
-    deflookup <- translationLayer(decisionMatrix)
+    deflookup <- reverse_tl(abstractionLayer(decisionMatrix))
+    names(deflookup) <- tolower(names(deflookup))
     d <- decisionMatrix(decisionMatrix)
   } else {
     stop("arg: decisionMatrix must be object of class decisionMatrix")
   }
   samples <- parse.manifest(manifest)
   output <- list()
+  total <- 20
+  # create progress bar
+  pb <- txtProgressBar(min = 0, max = length(samples), style = 3)
   for(cell.sample in seq_along(samples)) {
+    setTxtProgressBar(pb, cell.sample)
     cell.sample <- samples[[cell.sample]]
     x <- GetBioFeatures(manifest = cell.sample)
     names(x) <- tolower(names(x))
@@ -242,12 +246,13 @@ PaintStates <- function(manifest, decisionMatrix) {
   if(length(samples) > 1) {
     output <- GRangesList(output)
   }
+  close(pb)
   names(output) <- names(samples)
   attributes(output)$manifest <- samples
   return(output)
 }
 
-#' @importFrom dplyr left_join
+
 write.state <- function(x, y, color, file = stdout()) {
   manifest <- y
   meta <- list(software = "StatePaintR",
@@ -294,25 +299,33 @@ write.state <- function(x, y, color, file = stdout()) {
 }
 
 #' Write StatePaintR object to bedfiles
+#'
+#' @param states
+#' @param decisionMatrix
+#' @param output.dir
+#'
 #' @importFrom rtracklayer export.bed
+#' @importFrom dplyr left_join
 #' @return
 #' @export
 #' @example
-ExportStatePaintR <- function(states, color.key = Cedars.BFG.colors, output.dir = tempdir()) {
+ExportStatePaintR <- function(states, decisionMatrix, output.dir) {
+  if(missing(output.dir)) { stop("please indicate output directory") }
+  if(missing(decisionMatrix)) { stop("please include decisionMatrix") }
+  if(!dir.exists(output.dir)) { dir.create(output.dir) }
   m.data <- attributes(states)$manifest
-  if(!is.null(color.key)) {
-    color.value <- strsplit(color.key$COLOR, ",")
-    color.key$COLOR <- sapply(color.value, function(x)
-      rgb(x[1], x[2], x[3], maxColorValue=255))
-  }
+  color.key <- stateColors(decisionMatrix)
+  pb <- txtProgressBar(min = 0, max = length(states), style = 3)
   for(state in seq_along(states)) {
+    setTxtProgressBar(pb, state)
     s.name <- names(m.data)[state]
     s.m.data <- m.data[[state]]
     state <- states[[state]]
     write.state(state, s.m.data, color.key,
                 file.path(output.dir,
-                          paste0(s.name, ".segmentation.bed")))
+                          paste0(s.name, ".", nrow(s.m.data), "mark.segmentation.bed")))
   }
+  close(pb)
   message("segmentation files written to: ", output.dir)
 }
 
@@ -329,10 +342,12 @@ produce.state <- function(state.obj, position = 1) {
 
 #' Retrieve Decision Matrix from StateHub
 #'
-#' @param search
+#' @param search character string of either unique id, or search term.
 #'
-#' @return
+#' @return decisionMatrix object
 #' @importFrom httr content GET http_error modify_url
+#' @importFrom jsonlite toJSON fromJSON
+#' @importFrom stringr str_extract
 #' @export
 #'
 #' @examples
@@ -357,14 +372,18 @@ get.decision.matrix <- function(search) {
       }
     }
     rownames(decision.matrix) <- state.names
+    state.colors <- sapply(query.result$states, "[[", "format")
+    state.colors <- str_extract(state.colors, "#([a-f]|[A-F]|[0-9]){3}(([a-f]|[A-F]|[0-9]){3})?\\b")
+    names(state.colors) <- state.names
     decision.matrix <- new("decisionMatrix",
                            id = query.result[["id"]],
                            name = query.result[["name"]],
                            author = query.result[["author"]],
                            revision = query.result[["revision"]],
                            description = query.result[["description"]],
-                           translation.layer = query.result[["translation"]],
-                           decision.matrix = decision.matrix)
+                           abstraction.layer = fromJSON(toJSON(query.result[["translation"]], auto_unbox = TRUE)),
+                           decision.matrix = decision.matrix,
+                           state.colors = state.colors)
     if(query.i > 1) {
       output <- c(output, decision.matrix)
     } else {
@@ -374,14 +393,23 @@ get.decision.matrix <- function(search) {
   return(output)
 }
 
+reverse_tl <- function(tl) {
+  values <- sapply(tl, length)
+  values <- rep(names(values), values)
+  keys <- unlist(tl, use.names = F)
+  names(values) <- keys
+  return(as.list(values))
+}
+
 setClass(Class = "decisionMatrix",
          slots = list(id = "character",
                       name = "character",
                       author = "character",
                       revision = "character",
                       description = "character",
-                      translation.layer = "list",
-                      decision.matrix = "matrix"))
+                      abstraction.layer = "list",
+                      decision.matrix = "matrix",
+                      state.colors = "character"))
 setMethod("show",
           signature = signature(object = "decisionMatrix"),
           function(object) {
@@ -392,14 +420,44 @@ setMethod("show",
                 "Description:", object@description, "\n")
           })
 setGeneric("decisionMatrix", function(object) standardGeneric("decisionMatrix"))
+#' Extract Descision Matrix from descisionMatrix object
+#'
+#' @param object decisionMatrix.
+#'
+#' @return matrix descisionMatrix stripped of metadata
+#' @export
+#'
+#' @examples
 setMethod("decisionMatrix",
           signature = signature(object = "decisionMatrix"),
           function(object) {
             object@decision.matrix
           })
-setGeneric("translationLayer", function(object) standardGeneric("translationLayer"))
-setMethod("translationLayer",
+setGeneric("abstractionLayer", function(object) standardGeneric("abstractionLayer"))
+#' Extract abstraction layer from descisionMatrix object
+#'
+#' @param object decisionMatrix.
+#'
+#' @return list describing relationship between chromatin marks and functional categories
+#' @export
+#'
+#' @examples
+setMethod("abstractionLayer",
           signature = signature(object = "decisionMatrix"),
           function(object) {
-            object@translation.layer
+            object@abstraction.layer
+          })
+setGeneric("stateColors", function(object) standardGeneric("stateColors"))
+#' Extract color information from descisionMatrix object
+#'
+#' @param object decisionMatrix.
+#'
+#' @return named vector of colors for chromatin states
+#' @export
+#'
+#' @examples
+setMethod("stateColors",
+          signature = signature(object = "decisionMatrix"),
+          function(object) {
+            data.frame(STATE = names(object@state.colors), COLOR = object@state.colors, stringsAsFactors = FALSE)
           })

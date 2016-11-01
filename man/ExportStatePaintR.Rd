@@ -4,8 +4,10 @@
 \alias{ExportStatePaintR}
 \title{Write StatePaintR object to bedfiles}
 \usage{
-ExportStatePaintR(states, color.key = Cedars.BFG.colors,
-  output.dir = tempdir())
+ExportStatePaintR(states, decisionMatrix, output.dir)
+}
+\arguments{
+\item{output.dir}{}
 }
 \description{
 Write StatePaintR object to bedfiles
