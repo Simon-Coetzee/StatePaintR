@@ -6,7 +6,7 @@
 #' @importFrom IRanges IRanges
 #' @importFrom S4Vectors mcols mcols<-
 #' @importFrom readr read_tsv cols_only col_character col_integer
-GetBioFeatures <- function(manifest = NULL, forcemerge = FALSE) {
+GetBioFeatures <- function(manifest, my.seqinfo, forcemerge = FALSE) {
   # gzipfiles <- manifest[grepl(".gz$", manifest$FILE), ]
   good.files <- sapply(split(manifest, 1:nrow(manifest)), function(x) { file.exists(x$FILE) })
   if(sum(good.files) < nrow(manifest)) {
@@ -23,7 +23,6 @@ GetBioFeatures <- function(manifest = NULL, forcemerge = FALSE) {
   #       "merge these files before running StatePaintR")
   #}
   if (sum(good.files) >= 1) {
-    my.seqinfo <- Seqinfo(genome = manifest[1, "BUILD"])
     bed.list <- lapply(get.files,
                        function(x, s.info) {
                          if(any(grepl(".gz$", x$FILE))) {
@@ -158,6 +157,10 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
     stop("arg: decisionMatrix must be object of class decisionMatrix")
   }
   samples <- parse.manifest(manifest)
+  sample.genomes <- as.list(unique(unlist(sapply(samples, "[", "BUILD"))))
+  sample.genomes.names <- sample.genomes
+  sample.genomes <- lapply(sample.genomes.names, function(x) Seqinfo(genome = x))
+  names(sample.genomes) <- sample.genomes.names
   output <- list()
   total <- 20
   # create progress bar
@@ -165,7 +168,7 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
   for(cell.sample in seq_along(samples)) {
     setTxtProgressBar(pb, cell.sample)
     cell.sample <- samples[[cell.sample]]
-    x <- GetBioFeatures(manifest = cell.sample)
+    x <- GetBioFeatures(manifest = cell.sample, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
     names(x) <- tolower(names(x))
     inputset <- names(x)
     inputset <- sapply(inputset, function(x, y = deflookup) {
