@@ -122,10 +122,10 @@ footprintlookup <- function(query, definition) {
   } else {
     for(i in 1:nrow(definition)) {
       d <- definition[i, ]
-      qt <- query[!is.na(d), ]
+      qt <- query[!is.na(d)]
       d <- d[!is.na(d)]
       x <- base::.colSums(bitwAnd(d, 1L) == bitwAnd(qt, 1L),
-                          m = dim(qt)[1], n = dim(qt)[2],
+                          m = length(d), n = length(qt)/length(d),
                           na.rm = FALSE) == length(d)
       qr[x, 1] <- rownames(definition)[i]
     }
@@ -148,7 +148,7 @@ capwords <- function(s, strict = FALSE) {
 #'
 #' @return
 #' @importFrom GenomicRanges disjoin findOverlaps reduce
-#' @importFrom S4Vectors queryHits subjectHits
+#' @importFrom S4Vectors from to
 #' @importFrom stringr str_detect coll str_replace
 #' @export
 #'
@@ -210,7 +210,7 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
       x.f <- x.f[[1]]
     }
     dontbreak <- str_replace(inputset[grep(pattern = "^\\*", inputset)], "^\\*", "")
-    inputset <- stringr::str_replace(inputset, "^\\*", "")
+    inputset <- str_replace(inputset, "^\\*", "")
     if(length(dontbreak) > 0) {
       x.f <- x.f[x.f %outside% x[dontbreak]]
       unfrag <- reduce(sort(do.call(c, list(unlist(x[dontbreak]), ignore.mcols = TRUE))))
@@ -218,20 +218,8 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
       x.f <- sort(x.f)
     }
     overlaps <- findOverlaps(x.f, x)
-    qover <- queryHits(overlaps)
-    sover <- subjectHits(overlaps)
-    feature.names <- names(x)
-    overlaps.info <- data.frame(qhits = qover, feats = feature.names[sover], stringsAsFactors = FALSE)
-    overlap.table <- table(overlaps.info)
-    col.order <- colnames(d)[colnames(d) %in% colnames(overlap.table)]
-    resmatrix <- matrix(overlap.table, nrow = nrow(overlap.table),
-                        dimnames = list(rownames(overlap.table),
-                                        capwords(colnames(overlap.table))))[, col.order]
-    if(!inherits(resmatrix, "matrix")) {
-      dim(resmatrix) <- c(length(resmatrix), 1)
-      dimnames(resmatrix) <- list(rownames(overlap.table),
-                                  tolower(colnames(overlap.table)))
-    }
+    resmatrix <- make.overlap.matrix(from(overlaps), to(overlaps), names(x))
+    resmatrix <- resmatrix[, colnames(d)[colnames(d) %in% colnames(resmatrix)]]
     resmatrix[resmatrix == 0L] <- 2L
     resmatrix[resmatrix == 1L] <- 3L
     missing.data <- colnames(d)[!(colnames(d) %in% colnames(resmatrix))]
@@ -241,10 +229,10 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
       if(!inherits(d.m, "matrix")) d.m <- matrix(d.m, ncol = 1, dimnames = list(c(names(d.m)), c("SAMPLE")))
       d <- d[rowSums(d.m) < 1, colnames(d) %in% colnames(resmatrix)]
     }
-    d <- d[order(rowSums(d, na.rm = TRUE), decreasing = FALSE), ]
+    dl <- d[order(rowSums(d, na.rm = TRUE), decreasing = FALSE), ]
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
-    resmatrix.t <- t(resmatrix);
-    mcols(x.f)$state <- footprintlookup(resmatrix.t, d)[, 1]
+    resmatrix <- t(resmatrix);
+    mcols(x.f)$state <- footprintlookup(resmatrix, dl)[, 1]
     x.f.l <- split(x.f, x.f$state)
     x.f.l <- lapply(x.f.l, reduce)
     for(state.name in names(x.f.l)) {
@@ -265,6 +253,22 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
   return(output)
 }
 
+make.overlap.matrix <- function(query.over, subject.over, samples) {
+  overlaps <- data.frame(qhits = query.over,
+                         samples = samples[subject.over],
+                         stringsAsFactors = FALSE)
+  overlap.table <- table(overlaps)
+  output.matrix <- matrix(overlap.table,
+                          nrow = nrow(overlap.table),
+                          dimnames = list(rownames(overlap.table),
+                                          colnames(overlap.table)))
+  if(!is(output.matrix, "matrix")) {
+    dim(output.matrix) <- c(length(output.matrix), 1)
+    dimnames(output.matrix) <- list(rownames(overlap.table),
+                                    colnames(overlap.table))
+  }
+  return(output.matrix)
+}
 
 write.state <- function(x, y, color, file = stdout()) {
   manifest <- y

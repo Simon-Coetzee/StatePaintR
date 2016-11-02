@@ -1,7 +1,7 @@
 Package: StatePaintR
 Type: Package
 Title: Annotate Chromatin Footprints
-Version: 0.1.4
+Version: 0.1.5
 Author: Simon Coetzee
 Maintainer: Simon Coetzee <simon.coetzee@cshs.org>
 Description: It does things.
