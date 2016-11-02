@@ -227,9 +227,9 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
       d.m <- d[, missing.data] > 1
       d.m[is.na(d.m)] <- FALSE
       if(!inherits(d.m, "matrix")) d.m <- matrix(d.m, ncol = 1, dimnames = list(c(names(d.m)), c("SAMPLE")))
-      d <- d[rowSums(d.m) < 1, colnames(d) %in% colnames(resmatrix)]
+      dl <- d[rowSums(d.m) < 1, colnames(d) %in% colnames(resmatrix)]
     }
-    dl <- d[order(rowSums(d, na.rm = TRUE), decreasing = FALSE), ]
+    dl <- dl[order(rowSums(dl, na.rm = TRUE), decreasing = FALSE), ]
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
     resmatrix <- t(resmatrix);
     mcols(x.f)$state <- footprintlookup(resmatrix, dl)[, 1]
