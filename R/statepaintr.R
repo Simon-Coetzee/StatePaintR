@@ -243,7 +243,7 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
     }
     d <- d[order(rowSums(d, na.rm = TRUE), decreasing = FALSE), ]
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
-    resmatrix.t <- t(resmatrix); browser()
+    resmatrix.t <- t(resmatrix);
     mcols(x.f)$state <- footprintlookup(resmatrix.t, d)[, 1]
     x.f.l <- split(x.f, x.f$state)
     x.f.l <- lapply(x.f.l, reduce)
