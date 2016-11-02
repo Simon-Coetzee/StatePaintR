@@ -108,22 +108,30 @@ parse.manifest <- function(manifest = NULL) {
 
 footprintlookup <- function(query, definition) {
   qr <- matrix(nrow = dim(query)[2])
-  for(i in 1:nrow(definition)) {
-    d <- definition[i, ]
-    qt <- query[!is.na(d), ]
-    d <- d[!is.na(d)]
-    mn <- dim(qt)
-    x <- .colSums((bitwAnd(d, 1L) == bitwAnd(qt, 1L)) |
-                    (bitwAnd(d, 2L) == 0L &
-                       qt == 0L),
-                  m = mn[1],
-                  n = mn[2],
-                  na.rm = FALSE) == length(d)
-    qr[x, 1] <- rownames(definition)[i]
+  if(any(query == 0)) {
+    for(i in 1:nrow(definition)) {
+      d <- definition[i, ]
+      qt <- query[!is.na(d), ]
+      d <- d[!is.na(d)]
+      x <- base::colSums((bitwAnd(d, 1L) == bitwAnd(qt, 1L)) |
+                           (bitwAnd(d, 2L) == 0L &
+                              qt == 0L),
+                         na.rm = FALSE) == length(d)
+      qr[x, 1] <- rownames(definition)[i]
+    }
+  } else {
+    for(i in 1:nrow(definition)) {
+      d <- definition[i, ]
+      qt <- query[!is.na(d), ]
+      d <- d[!is.na(d)]
+      x <- base::.colSums(bitwAnd(d, 1L) == bitwAnd(qt, 1L),
+                          m = dim(qt)[1], n = dim(qt)[2],
+                          na.rm = FALSE) == length(d)
+      qr[x, 1] <- rownames(definition)[i]
+    }
   }
   return(qr)
 }
-
 
 ## from toupper documentation
 capwords <- function(s, strict = FALSE) {
@@ -146,6 +154,7 @@ capwords <- function(s, strict = FALSE) {
 #'
 #' @examples
 PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
+  start.time <- Sys.time()
   if(missing(manifest)) {stop("provide a manifest describing the location of your files \n",
                               "and the mark that was ChIPed")}
   if(missing(decisionMatrix)) {stop("provide a decisionMatrix object")}
@@ -163,7 +172,6 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
   names(sample.genomes) <- sample.genomes.names
   output <- list()
   total <- 20
-  # create progress bar
   pb <- txtProgressBar(min = 0, max = length(samples), style = 3)
   for(cell.sample in seq_along(samples)) {
     setTxtProgressBar(pb, cell.sample)
@@ -235,7 +243,7 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
     }
     d <- d[order(rowSums(d, na.rm = TRUE), decreasing = FALSE), ]
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
-    resmatrix.t <- t(resmatrix)
+    resmatrix.t <- t(resmatrix); browser()
     mcols(x.f)$state <- footprintlookup(resmatrix.t, d)[, 1]
     x.f.l <- split(x.f, x.f$state)
     x.f.l <- lapply(x.f.l, reduce)
@@ -252,6 +260,8 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
   close(pb)
   names(output) <- names(samples)
   attributes(output)$manifest <- samples
+  done.time <- Sys.time() - start.time
+  message("processed ", length(samples), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
   return(output)
 }
 
