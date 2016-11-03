@@ -171,7 +171,6 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
   sample.genomes <- lapply(sample.genomes.names, function(x) Seqinfo(genome = x))
   names(sample.genomes) <- sample.genomes.names
   output <- list()
-  total <- 20
   pb <- txtProgressBar(min = 0, max = length(samples), style = 3)
   for(cell.sample in seq_along(samples)) {
     setTxtProgressBar(pb, cell.sample)
@@ -372,11 +371,12 @@ get.decision.matrix <- function(search) {
   if(missing(search)) { stop("missing search argument") }
   stateHub <- modify_url("http://statehub.org/statehub", path = "statehub/getmodel.jsp")
   query <- GET(stateHub, query = list(id = search))
-  if(http_error(query)) {
+  if(length(content(query)) < 1) {
     query <- GET(stateHub, query = list(search = search))
     if(http_error(query)) { stop("site not availible") }
-    if(length(query) < 1) { stop("no search results found") }
+    if(length(content(query)) < 1) { stop("no search results found") }
   }
+  browser()
   query <- content(query)
   for(query.i in seq_along(query)) {
     query.result <- query[[query.i]]
