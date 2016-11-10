@@ -25,14 +25,31 @@ GetBioFeatures <- function(manifest, my.seqinfo, forcemerge = FALSE) {
   if (sum(good.files) >= 1) {
     bed.list <- lapply(get.files,
                        function(x, s.info) {
+                         if(grepl(".narrowPeak", x$FILE, ignore.case = TRUE)) {
+                           col.types <- cols_only(chr = col_character(),
+                                                  start = col_integer(),
+                                                  end = col_integer(),
+                                                  name = col_character(),
+                                                  score = col_integer(),
+                                                  strand = col_character(),
+                                                  signalValue = col_numeric())
+                           col.names <- c("chr", "start", "end", "name", "score", "strand", "signalValue")
+                           col.numbers <- c(1:6)
+                         } else {
+                           col.types <- cols_only(chr = col_character(),
+                                                  start = col_integer(),
+                                                  end = col_integer())
+                           col.names <- c("chr", "start", "end")
+                           col.numbers <- c(1:3)
+                         }
                          if(any(grepl(".gz$", x$FILE))) {
-                           xf <- suppressWarnings(read_tsv(file = x$FILE, col_names = c("chr", "start", "end"),
-                                                           col_types = cols_only(chr = col_character(), start = col_integer(), end = col_integer()),
+                           xf <- suppressWarnings(read_tsv(file = x$FILE, col_names = col.names,
+                                                           col_types = col.types,
                                                            progress = FALSE))
                          } else {
                            xf <- fread(input = x$FILE, sep = "\t", header = FALSE,
-                                       select = c(1:3), skip = "chr",
-                                       col.names = c("chr", "start", "end"),
+                                       select = col.numbers, skip = "chr",
+                                       col.names = col.names,
                                        encoding = "UTF-8",
                                        stringsAsFactors = FALSE,
                                        data.table = FALSE, showProgress = FALSE)
@@ -43,6 +60,7 @@ GetBioFeatures <- function(manifest, my.seqinfo, forcemerge = FALSE) {
                                                         end = xf$end),
                                        strand = "*",
                                        feature = base::rep.int(name, nrow(xf)),
+                                       signalValue = ifelse(ncol(xf) > 3, NA, xf$signalValue),
                                        seqinfo = s.info)
                          return(xf)
                        }, s.info = my.seqinfo)
