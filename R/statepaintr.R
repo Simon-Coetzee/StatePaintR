@@ -168,7 +168,13 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
   samples <- parse.manifest(manifest)
   sample.genomes <- as.list(unique(unlist(sapply(samples, "[", "BUILD"))))
   sample.genomes.names <- sample.genomes
-  sample.genomes <- lapply(sample.genomes.names, function(x) Seqinfo(genome = x))
+  do.seqinfo <- try(Seqinfo(genome = sample.genomes.names[[1]]))
+  if(inherits(do.seqinfo, "try-error")) {
+    sample.genomes <- lapply(sample.genomes.names, function(x) Seqinfo(genome = NA))
+    warning("could not download seqinfo for genome")
+  } else {
+    sample.genomes <- lapply(sample.genomes.names, function(x) Seqinfo(genome = x))
+  }
   names(sample.genomes) <- sample.genomes.names
   output <- list()
   pb <- txtProgressBar(min = 0, max = length(samples), style = 3)
@@ -376,7 +382,6 @@ get.decision.matrix <- function(search) {
     if(http_error(query)) { stop("site not availible") }
     if(length(content(query)) < 1) { stop("no search results found") }
   }
-  browser()
   query <- content(query)
   for(query.i in seq_along(query)) {
     query.result <- query[[query.i]]
