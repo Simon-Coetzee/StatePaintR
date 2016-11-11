@@ -171,7 +171,7 @@ capwords <- function(s, strict = FALSE) {
 #' @export
 #'
 #' @examples
-PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
+PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE) {
   start.time <- Sys.time()
   if(missing(manifest)) {stop("provide a manifest describing the location of your files \n",
                               "and the mark that was ChIPed")}
@@ -243,6 +243,19 @@ PaintStates <- function(manifest, decisionMatrix, progress = TRUE) {
     overlaps <- findOverlaps(x.f, x)
     resmatrix <- make.overlap.matrix(from(overlaps), to(overlaps), names(x))
     resmatrix <- resmatrix[, colnames(d)[colnames(d) %in% colnames(resmatrix)]]
+### This is pseudocode
+### signalValue represents if any columns are derived from narrowPeaks files, and
+### that the user requested scores for segmentations
+### signalCol is the column name or position that posesses a signalValue {one could use signalCol > 0 to test signalValue}
+    if(scoreStates) {
+      scorematrix <- resmatrix
+      for(feature in seq_along(signalCol)) {
+        present <- which(scorematrix[, feature] == 1L)
+        scorematrix[present, feature] <- mcols(x)[from(overlaps[to(overlaps) %in% present,]), "signalValue"]
+        scorematrix[present, feature] <- rank(scorematrix[present, feature])
+      }
+    }
+    ### end pseudocode
     resmatrix[resmatrix == 0L] <- 2L
     resmatrix[resmatrix == 1L] <- 3L
     missing.data <- colnames(d)[!(colnames(d) %in% colnames(resmatrix))]
