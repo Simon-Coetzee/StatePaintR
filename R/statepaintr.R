@@ -169,6 +169,7 @@ capwords <- function(s, strict = FALSE) {
 #' @importFrom GenomicRanges disjoin findOverlaps reduce
 #' @importFrom S4Vectors from to
 #' @importFrom stringr str_detect coll str_replace
+#' @importFrom data.table frankv
 #' @export
 #'
 #' @examples
@@ -196,9 +197,11 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   }
   names(sample.genomes) <- sample.genomes.names
   output <- list()
-  pb <- txtProgressBar(min = 0, max = length(samples), style = 3)
+  lc <- 0
+  pb <- txtProgressBar(min = 0, max = length(samples)*3, style = 3)
   for(cell.sample in seq_along(samples)) {
-    setTxtProgressBar(pb, cell.sample)
+    lc <- lc + 1
+    setTxtProgressBar(pb, lc)
     cell.sample <- samples[[cell.sample]]
     x <- GetBioFeatures(manifest = cell.sample, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
     names(x) <- tolower(names(x))
@@ -244,19 +247,17 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     overlaps <- findOverlaps(x.f, x)
     resmatrix <- make.overlap.matrix(from(overlaps), to(overlaps), names(x))
     resmatrix <- resmatrix[, colnames(d)[colnames(d) %in% colnames(resmatrix)]]
-### This is pseudocode
-### signalValue represents if any columns are derived from narrowPeaks files, and
-### that the user requested scores for segmentations
-### signalCol is the column name or position that posesses a signalValue {one could use signalCol > 0 to test signalValue}
     if(scoreStates) {
       scorematrix <- resmatrix
-      for(feature in seq_along(signalCol)) {
-        present <- which(scorematrix[, feature] == 1L)
-        scorematrix[present, feature] <- mcols(x)[from(overlaps[to(overlaps) %in% present,]), "signalValue"]
-        scorematrix[present, feature] <- rank(scorematrix[present, feature])
+      signalCol <- sapply(x, function(x) !is.na(mcols(x)[1, "signalValue"]))
+      signalCol <- which(signalCol[colnames(scorematrix)])
+      for(feature in names(signalCol)) {
+        scoreOverlaps <- findOverlaps(x.f, x[[feature]])
+        scorematrix[from(scoreOverlaps), feature] <- mcols(x[[feature]])[to(scoreOverlaps), "signalValue"]
+        scorematrix[, feature] <- frankv(scorematrix[, feature], ties.method = "dense")
       }
+      scorematrix <- scorematrix[, names(signalCol)]
     }
-    ### end pseudocode
     resmatrix[resmatrix == 0L] <- 2L
     resmatrix[resmatrix == 1L] <- 3L
     missing.data <- colnames(d)[!(colnames(d) %in% colnames(resmatrix))]
@@ -269,15 +270,67 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     dl <- dl[order(rowSums(dl, na.rm = TRUE), decreasing = FALSE), ]
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
     resmatrix <- t(resmatrix);
-    mcols(x.f)$state <- footprintlookup(resmatrix, dl)[, 1]
+    lc <- lc + 1
+    setTxtProgressBar(pb, lc)
+    if(scoreStates) {
+      dl.score <- dl[, names(signalCol)]
+      score.cells <- which(dl.score == 3L, arr.ind = T)
+      segments <- data.frame(state = footprintlookup(resmatrix, dl)[, 1], score = NA, stringsAsFactors = FALSE)
+      score.features <- unique(segments$state)[(unique(segments$state) %in% rownames(score.cells))]
+      for(score.feature in score.features) {
+        score.feature.num <- which(score.feature == score.features)
+        feature.scores <- scorematrix[segments$state == score.feature, score.cells[rownames(score.cells) %in% score.feature, "col"]]
+        if(is(feature.scores, "matrix")) feature.scores <- rowMeans(feature.scores)
+        segments[segments$state == score.feature, "score"] <- feature.scores
+      }
+      mcols(x.f)$state <- segments$state
+      mcols(x.f)$score <- segments$score
+    } else {
+      mcols(x.f)$state <- footprintlookup(resmatrix, dl)[, 1]
+    }
     x.f.l <- split(x.f, x.f$state)
-    x.f.l <- lapply(x.f.l, reduce)
-    for(state.name in names(x.f.l)) {
-      mcols(x.f.l[[state.name]])$name <- cell.sample[1, "SAMPLE"]
-      mcols(x.f.l[[state.name]])$state <- state.name
+    if(scoreStates) {
+      x.f.ll <- lapply(x.f.l, reduce, with.revmap=TRUE)
+      for(state.name in names(x.f.ll)) {
+        if(state.name %in% score.features) {
+          score.feature <- state.name
+          revmap <- mcols(x.f.ll[[score.feature]])$revmap
+          ## we are getting the scores from the revmapped data here, we want it both when there are multiple scores and when there is just a single score
+          ## i believe that if there are multiple scores they will always be equal, so just grab the first one, but check yo
+          my.scores <- sapply(revmap, function(my.splits, orig.gr.cols) {
+            if(length(my.splits) > 1) {
+              if(zero_range(orig.gr.cols[my.splits])) {
+                my.splits[1]
+              } else {
+                browser()
+              }
+            } else {
+              my.splits
+            }
+          }, orig.gr.cols = mcols(x.f.l[[score.feature]])$score)
+          my.scores <- mcols(x.f.l[[score.feature]])[my.scores, "score"]
+          my.scores <- (my.scores/max(my.scores)) * 1000
+        } else {
+          my.scores <- 0
+        }
+        mcols(x.f.ll[[state.name]])$revmap <- NULL
+        mcols(x.f.ll[[state.name]])$name <- cell.sample[1, "SAMPLE"]
+        mcols(x.f.ll[[state.name]])$state <- state.name
+        mcols(x.f.ll[[state.name]])$score <- my.scores
+      }
+      x.f.l <- x.f.ll
+    } else {
+      x.f.l <- lapply(x.f.l, reduce)
+      for(state.name in names(x.f.l)) {
+        mcols(x.f.l[[state.name]])$name <- cell.sample[1, "SAMPLE"]
+        mcols(x.f.l[[state.name]])$state <- state.name
+        mcols(x.f.l[[state.name]])$score <- 0
+      }
     }
     x.f <- sort(do.call(c, unlist(x.f.l, use.names = FALSE)))
     output <- c(output, x.f)
+    lc <- lc + 1
+    setTxtProgressBar(pb, lc)
   }
   if(length(samples) > 1) {
     output <- GRangesList(output)
@@ -288,6 +341,12 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   done.time <- Sys.time() - start.time
   message("processed ", length(samples), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
   return(output)
+}
+
+zero_range <- function(x, tol = .Machine$double.eps ^ 0.5) {
+  if (length(x) == 1) return(TRUE)
+  x <- range(x) / mean(x)
+  isTRUE(all.equal(x[1], x[2], tolerance = tol))
 }
 
 make.overlap.matrix <- function(query.over, subject.over, samples) {
@@ -307,7 +366,7 @@ make.overlap.matrix <- function(query.over, subject.over, samples) {
   return(output.matrix)
 }
 
-write.state <- function(x, y, color, file = stdout()) {
+write.state <- function(x, y, color, hub.id, file = stdout()) {
   manifest <- y
   meta <- list(software = "StatePaintR",
                version = packageVersion("StatePaintR"),
@@ -316,14 +375,14 @@ write.state <- function(x, y, color, file = stdout()) {
                              manifest$MARK,
                              manifest$FILE,
                              sep = " "))
-  if(all(names(mcols(x)) == c("name", "state"))) {
+  if(all(names(mcols(x)) == c("name", "state", "score"))) {
     if(!is.null(color)) {
       my.cols <- data.frame(mcols(x), stringsAsFactors = FALSE)
       my.cols <- left_join(my.cols, color, by = c("state" = "STATE"))
-      colnames(my.cols) <- c("sample", "name", "itemRgb")
+      colnames(my.cols) <- c("sample", "name", "score", "itemRgb")
       mcols(x) <- my.cols
     } else {
-      names(mcols(x)) <- c("sample", "name")
+      names(mcols(x)) <- c("sample", "name", "score")
     }
   } else {
     stop("non default column names in input data, meta data may be name and sample")

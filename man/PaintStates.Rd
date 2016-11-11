@@ -4,7 +4,7 @@
 \alias{PaintStates}
 \title{getFootprint}
 \usage{
-PaintStates(manifest, decisionMatrix, progress = TRUE)
+PaintStates(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE)
 }
 \arguments{
 \item{decisionMatrix}{}
