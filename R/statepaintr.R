@@ -5,7 +5,7 @@
 #' @importFrom GenomicRanges GRangesList GRanges
 #' @importFrom IRanges IRanges
 #' @importFrom S4Vectors mcols mcols<-
-#' @importFrom readr read_tsv cols_only col_character col_integer
+#' @importFrom readr read_tsv cols_only col_character col_integer col_number
 GetBioFeatures <- function(manifest, my.seqinfo, forcemerge = FALSE) {
   # gzipfiles <- manifest[grepl(".gz$", manifest$FILE), ]
   good.files <- sapply(split(manifest, 1:nrow(manifest)), function(x) { file.exists(x$FILE) })
@@ -32,9 +32,9 @@ GetBioFeatures <- function(manifest, my.seqinfo, forcemerge = FALSE) {
                                                   name = col_character(),
                                                   score = col_integer(),
                                                   strand = col_character(),
-                                                  signalValue = col_numeric())
+                                                  signalValue = col_number())
                            col.names <- c("chr", "start", "end", "name", "score", "strand", "signalValue")
-                           col.numbers <- c(1:6)
+                           col.numbers <- c(1:7)
                          } else {
                            col.types <- cols_only(chr = col_character(),
                                                   start = col_integer(),
@@ -55,12 +55,13 @@ GetBioFeatures <- function(manifest, my.seqinfo, forcemerge = FALSE) {
                                        data.table = FALSE, showProgress = FALSE)
                          }
                          name <- paste(x$SAMPLE, x$MARK, sep = "_")
+                         if(ncol(xf) < 7) xf$signalValue <- NA
                          xf <- GRanges(seqnames = xf$chr,
                                        ranges = IRanges(start = xf$start + 1L,
                                                         end = xf$end),
                                        strand = "*",
                                        feature = base::rep.int(name, nrow(xf)),
-                                       signalValue = ifelse(ncol(xf) > 3, NA, xf$signalValue),
+                                       signalValue = xf$signalValue,
                                        seqinfo = s.info)
                          return(xf)
                        }, s.info = my.seqinfo)
