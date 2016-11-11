@@ -390,6 +390,7 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
   file <- file(file, "w+")
   writeLines(paste("# this file was produced by", meta$software), file)
   writeLines(paste("# version number:", meta$version), file)
+  writeLines(paste("# StateHub Model ID:", hub.id),)
   writeLines("# it is the chromatin segmentation of the following files: ", file)
   writeLines(meta$files, file)
   if(!is.null(color)) {
@@ -428,13 +429,14 @@ ExportStatePaintR <- function(states, decisionMatrix, output.dir) {
   if(!dir.exists(output.dir)) { dir.create(output.dir) }
   m.data <- attributes(states)$manifest
   color.key <- stateColors(decisionMatrix)
+  hub.id <- x@id
   pb <- txtProgressBar(min = 0, max = length(states), style = 3)
   for(state in seq_along(states)) {
     setTxtProgressBar(pb, state)
     s.name <- names(m.data)[state]
     s.m.data <- m.data[[state]]
     state <- states[[state]]
-    write.state(state, s.m.data, color.key,
+    write.state(state, s.m.data, color.key, hub.id,
                 file.path(output.dir,
                           paste0(s.name, ".", nrow(s.m.data), "mark.segmentation.bed")))
   }
