@@ -12,10 +12,6 @@ GetBioFeatures <- function(manifest, my.seqinfo, forcemerge = FALSE) {
   if(sum(good.files) < nrow(manifest)) {
     stop(paste0("cannot find file: ", manifest[!good.files, "FILE"], "\n"))
   }
-  # if(length(gzipfiles) >= 1) {
-  #   manifest[grepl(".gz$", manifest$FILE), "FILE"] <- paste(gzipfiles$OPENWITH,
-  #                                                           "<", gzipfiles$FILE)
-  # }
   get.files <- split(manifest, 1:nrow(manifest))
   names(get.files) <- paste(manifest$SAMPLE, manifest$MARK, sep = "_")
   #if(anyDuplicated(names(get.files))) {
