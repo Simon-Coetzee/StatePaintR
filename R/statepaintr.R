@@ -390,7 +390,7 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
   file <- file(file, "w+")
   writeLines(paste("# this file was produced by", meta$software), file)
   writeLines(paste("# version number:", meta$version), file)
-  writeLines(paste("# StateHub Model ID:", hub.id),)
+  writeLines(paste("# StateHub Model ID:", hub.id), file)
   writeLines("# it is the chromatin segmentation of the following files: ", file)
   writeLines(meta$files, file)
   if(!is.null(color)) {
