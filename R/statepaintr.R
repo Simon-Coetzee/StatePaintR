@@ -72,7 +72,7 @@ GetBioFeatures <- function(manifest, my.seqinfo, forcemerge = FALSE) {
 }
 
 parse.manifest <- function(manifest = NULL) {
-  manifest.df <- read.table(manifest, stringsAsFactors = FALSE, header = TRUE)
+  manifest.df <- read.table(manifest, sep = "\t", stringsAsFactors = FALSE, header = TRUE)
   valid.columns <- colnames(manifest.df) == c("SAMPLE",
                                               "MARK",
                                               "SRC",
