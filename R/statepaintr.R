@@ -14,10 +14,10 @@ GetBioFeatures <- function(manifest, my.seqinfo, forcemerge = FALSE) {
   }
   get.files <- split(manifest, 1:nrow(manifest))
   names(get.files) <- paste(manifest$SAMPLE, manifest$MARK, sep = "_")
-  #if(anyDuplicated(names(get.files))) {
-  #  stop("the manifest describes multiple files with the same sample name and mark \n",
-  #       "merge these files before running StatePaintR")
-  #}
+  if(anyDuplicated(names(get.files))) {
+    stop("the manifest describes multiple files with the same sample name and mark \n",
+         "merge these files before running StatePaintR")
+  }
   if (sum(good.files) >= 1) {
     bed.list <- lapply(get.files,
                        function(x, s.info) {
@@ -166,6 +166,7 @@ capwords <- function(s, strict = FALSE) {
 #' @importFrom S4Vectors from to
 #' @importFrom stringr str_detect coll str_replace
 #' @importFrom data.table frankv
+#' @importFrom matrixStats rowMedians
 #' @export
 #'
 #' @examples
@@ -233,7 +234,16 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
       x.f <- x.f[[1]]
     }
     dontbreak <- str_replace(inputset[grep(pattern = "^\\*", inputset)], "^\\*", "")
+    dontbreak <- str_replace(dontbreak, "\\*$", "")
+
+    useScore <- str_replace(inputset[grep(pattern = "\\*$", inputset)], "\\*$", "")
+    useScore <- str_replace(useScore, "^\\*", "")
+
     inputset <- str_replace(inputset, "^\\*", "")
+    inputset <- str_replace(inputset, "\\*$", "")
+
+    names(x) <- str_replace(inputset, "^\\*", "")
+    names(x) <- str_replace(inputset, "\\*$", "")
     if(length(dontbreak) > 0) {
       x.f <- x.f[x.f %outside% x[dontbreak]]
       unfrag <- reduce(sort(do.call(c, list(unlist(x[dontbreak]), ignore.mcols = TRUE))))
@@ -246,11 +256,13 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     if(scoreStates) {
       scorematrix <- resmatrix
       signalCol <- sapply(x, function(x) !is.na(mcols(x)[1, "signalValue"]))
+      if(length(useScore) < 1) useScore <- names(signalCol)
+      signalCol <- signalCol[names(signalCol) %in% useScore]
       signalCol <- which(signalCol[colnames(scorematrix)])
       for(feature in names(signalCol)) {
         scoreOverlaps <- findOverlaps(x.f, x[[feature]])
         scorematrix[from(scoreOverlaps), feature] <- mcols(x[[feature]])[to(scoreOverlaps), "signalValue"]
-        scorematrix[, feature] <- frankv(scorematrix[, feature], ties.method = "dense")
+        scorematrix[, feature] <- frankv(scorematrix[, feature], ties.method = "average")
       }
       scorematrix <- scorematrix[, names(signalCol)]
     }
@@ -274,9 +286,12 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
       segments <- data.frame(state = footprintlookup(resmatrix, dl)[, 1], score = NA, stringsAsFactors = FALSE)
       score.features <- unique(segments$state)[(unique(segments$state) %in% rownames(score.cells))]
       for(score.feature in score.features) {
-        score.feature.num <- which(score.feature == score.features)
         feature.scores <- scorematrix[segments$state == score.feature, score.cells[rownames(score.cells) %in% score.feature, "col"]]
-        if(is(feature.scores, "matrix")) feature.scores <- rowMeans(feature.scores)
+        if(is(feature.scores, "matrix")) {
+          feature.scores <- rowMedians(feature.scores)
+        } else {
+          feature.scores <- feature.scores/2
+        }
         segments[segments$state == score.feature, "score"] <- feature.scores
       }
       mcols(x.f)$state <- segments$state
@@ -291,21 +306,19 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
         if(state.name %in% score.features) {
           score.feature <- state.name
           revmap <- mcols(x.f.ll[[score.feature]])$revmap
-          ## we are getting the scores from the revmapped data here, we want it both when there are multiple scores and when there is just a single score
-          ## i believe that if there are multiple scores they will always be equal, so just grab the first one, but check yo
           my.scores <- sapply(revmap, function(my.splits, orig.gr.cols) {
             if(length(my.splits) > 1) {
               if(zero_range(orig.gr.cols[my.splits])) {
                 my.splits[1]
               } else {
-                browser()
+                my.splits[which(orig.gr.cols[my.splits] == max(orig.gr.cols[my.splits]))[[1]]]
               }
             } else {
               my.splits
             }
           }, orig.gr.cols = mcols(x.f.l[[score.feature]])$score)
           my.scores <- mcols(x.f.l[[score.feature]])[my.scores, "score"]
-          my.scores <- (my.scores/max(my.scores)) * 1000
+          #my.scores <- (my.scores/max(my.scores)) * 1000
         } else {
           my.scores <- 0
         }
@@ -324,6 +337,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
       }
     }
     x.f <- sort(do.call(c, unlist(x.f.l, use.names = FALSE)))
+    x.f$score <- (x.f$score/max(x.f$score)) * 1000
     output <- c(output, x.f)
     lc <- lc + 1
     setTxtProgressBar(pb, lc)
