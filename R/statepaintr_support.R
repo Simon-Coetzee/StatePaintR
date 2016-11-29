@@ -4,6 +4,7 @@
 #' @importFrom GenomicRanges GRangesList GRanges
 #' @importFrom IRanges IRanges
 #' @importFrom S4Vectors mcols mcols<-
+#' @importFrom utils read.table
 #' @importFrom readr read_tsv cols_only col_character col_integer col_number
 GetBioFeatures <- function(manifest, my.seqinfo) {
   good.files <- sapply(split(manifest, 1:nrow(manifest)), function(x) { file.exists(x$FILE) })
@@ -175,6 +176,7 @@ make.overlap.matrix <- function(query.over, subject.over, samples) {
   return(output.matrix)
 }
 
+#' @importFrom utils packageVersion
 write.state <- function(x, y, color, hub.id, file = stdout()) {
   manifest <- y
   meta <- list(software = "StatePaintR",
