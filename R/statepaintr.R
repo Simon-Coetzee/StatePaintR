@@ -11,6 +11,7 @@
 #' @importFrom stringr str_detect coll str_replace
 #' @importFrom data.table frankv
 #' @importFrom matrixStats rowMedians
+#' @importFrom utils txtProgressBar setTxtProgressBar
 #' @export
 #'
 #' @examples

@@ -19,4 +19,5 @@ Imports: GenomeInfoDb,
     matrixStats,
     readr,
     rtracklayer,
-    stringr
+    stringr,
+    utils
