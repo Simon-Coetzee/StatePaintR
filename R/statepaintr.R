@@ -39,10 +39,10 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   names(sample.genomes) <- sample.genomes.names
   output <- list()
   lc <- 0
-  pb <- txtProgressBar(min = 0, max = length(samples)*3, style = 3)
+  if(progress) pb <- txtProgressBar(min = 0, max = length(samples)*3, style = 3)
   for(cell.sample in seq_along(samples)) {
     lc <- lc + 1
-    setTxtProgressBar(pb, lc)
+    if(progress) setTxtProgressBar(pb, lc)
     cell.sample <- samples[[cell.sample]]
     x <- GetBioFeatures(manifest = cell.sample, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
     names(x) <- tolower(names(x))
@@ -121,7 +121,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
     resmatrix <- t(resmatrix);
     lc <- lc + 1
-    setTxtProgressBar(pb, lc)
+    if(progress) setTxtProgressBar(pb, lc)
     if(scoreStates) {
       dl.score <- dl[, names(signalCol)]
       score.cells <- which(dl.score == 3L, arr.ind = T)
@@ -182,7 +182,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     x.f$score <- (x.f$score/max(x.f$score)) * 1000
     output <- c(output, x.f)
     lc <- lc + 1
-    setTxtProgressBar(pb, lc)
+    if(progress) setTxtProgressBar(pb, lc)
   }
   if(length(samples) > 1) {
     output <- GRangesList(output)
@@ -191,7 +191,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   names(output) <- names(samples)
   attributes(output)$manifest <- samples
   done.time <- Sys.time() - start.time
-  message("processed ", length(samples), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
+  if(progress) message("processed ", length(samples), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
   return(output)
 }
 
