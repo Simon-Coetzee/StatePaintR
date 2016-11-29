@@ -195,7 +195,6 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   return(output)
 }
 
-
 #' Write StatePaintR object to bedfiles
 #'
 #' @param states
@@ -281,14 +280,21 @@ get.decision.matrix <- function(search) {
   return(output)
 }
 
-reverse_tl <- function(tl) {
-  values <- sapply(tl, length)
-  values <- rep(names(values), values)
-  keys <- unlist(tl, use.names = F)
-  names(values) <- keys
-  return(as.list(values))
-}
-
+#' Title
+#'
+#' @slot id character.
+#' @slot name character.
+#' @slot author character.
+#' @slot revision character.
+#' @slot description character.
+#' @slot abstraction.layer list.
+#' @slot decision.matrix matrix.
+#' @slot state.colors character.
+#'
+#' @return
+#' @export
+#'
+#' @examples
 setClass(Class = "decisionMatrix",
          slots = list(id = "character",
                       name = "character",
@@ -298,17 +304,8 @@ setClass(Class = "decisionMatrix",
                       abstraction.layer = "list",
                       decision.matrix = "matrix",
                       state.colors = "character"))
-setMethod("show",
-          signature = signature(object = "decisionMatrix"),
-          function(object) {
-            cat(" ID:", object@id, "\n",
-                "Name:", object@name, "\n",
-                "Author:", object@author, "\n",
-                "Revision:", object@revision, "\n",
-                "Description:", object@description, "\n")
-          })
-setGeneric("decisionMatrix", function(object) standardGeneric("decisionMatrix"))
 
+setGeneric("decisionMatrix", function(object) standardGeneric("decisionMatrix"))
 #' Extract Descision Matrix from descisionMatrix object
 #'
 #' @param object decisionMatrix.

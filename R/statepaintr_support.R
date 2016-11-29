@@ -229,15 +229,7 @@ reverse_tl <- function(tl) {
   return(as.list(values))
 }
 
-setClass(Class = "decisionMatrix",
-         slots = list(id = "character",
-                      name = "character",
-                      author = "character",
-                      revision = "character",
-                      description = "character",
-                      abstraction.layer = "list",
-                      decision.matrix = "matrix",
-                      state.colors = "character"))
+
 setMethod("show",
           signature = signature(object = "decisionMatrix"),
           function(object) {

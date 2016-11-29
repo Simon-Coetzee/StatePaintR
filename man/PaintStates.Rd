@@ -2,14 +2,14 @@
 % Please edit documentation in R/statepaintr.R
 \name{PaintStates}
 \alias{PaintStates}
-\title{getFootprint}
+\title{Run a StatePaintR decisionMatrix against a group of files listed in a manifest.}
 \usage{
 PaintStates(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE)
 }
 \arguments{
-\item{decisionMatrix}{}
+\item{progress}{}
 }
 \description{
-getFootprint
+Run a StatePaintR decisionMatrix against a group of files listed in a manifest.
 }
 

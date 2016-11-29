@@ -3,6 +3,7 @@
 export(ExportStatePaintR)
 export(PaintStates)
 export(get.decision.matrix)
+exportClasses(decisionMatrix)
 exportMethods(abstractionLayer)
 exportMethods(decisionMatrix)
 exportMethods(stateColors)

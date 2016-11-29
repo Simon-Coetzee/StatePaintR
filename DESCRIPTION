@@ -8,3 +8,15 @@ Description: It does things.
 License: GPL-3
 LazyData: TRUE
 RoxygenNote: 5.0.1
+Imports: GenomeInfoDb,
+    GenomicRanges,
+    IRanges,
+    S4Vectors,
+    data.table,
+    dplyr,
+    httr,
+    jsonlite,
+    matrixStats,
+    readr,
+    rtracklayer,
+    stringr
