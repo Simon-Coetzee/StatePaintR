@@ -214,7 +214,7 @@ ExportStatePaintR <- function(states, decisionMatrix, output.dir) {
   if(!dir.exists(output.dir)) { dir.create(output.dir) }
   m.data <- attributes(states)$manifest
   color.key <- stateColors(decisionMatrix)
-  hub.id <- x@id
+  hub.id <- decisionMatrix@id
   pb <- txtProgressBar(min = 0, max = length(states), style = 3)
   for(state in seq_along(states)) {
     setTxtProgressBar(pb, state)
