@@ -2,28 +2,57 @@
 % Please edit documentation in R/statepaintr.R
 \docType{class}
 \name{decisionMatrix-class}
+\alias{abstractionLayer,decisionMatrix-method}
+\alias{decisionMatrix,decisionMatrix-method}
 \alias{decisionMatrix-class}
-\title{Title}
-\description{
-Title
+\alias{stateColors,decisionMatrix-method}
+\title{decisionMatrix class}
+\usage{
+\S4method{decisionMatrix}{decisionMatrix}(object)
+
+\S4method{abstractionLayer}{decisionMatrix}(object)
+
+\S4method{stateColors}{decisionMatrix}(object)
 }
+\arguments{
+\item{object}{decisionMatrix.}
+}
+\description{
+decisionMatrix class
+}
+\section{Methods (by generic)}{
+\itemize{
+\item \code{decisionMatrix}: Extract Descision Matrix from descisionMatrix object
+
+\item \code{abstractionLayer}: Extract abstraction layer from descisionMatrix object
+
+\item \code{stateColors}: Extract color information from descisionMatrix object
+}}
 \section{Slots}{
 
 \describe{
-\item{\code{id}}{character.}
+\item{\code{id}}{character. a unique ID that refers to a model revision}
 
-\item{\code{name}}{character.}
+\item{\code{name}}{character. The name of the model on StateHub}
 
-\item{\code{author}}{character.}
+\item{\code{author}}{character. The author of the model on StateHub}
 
-\item{\code{revision}}{character.}
+\item{\code{revision}}{character. The revision of the model. A time stamp}
 
-\item{\code{description}}{character.}
+\item{\code{description}}{character. A short description of the model.}
 
-\item{\code{abstraction.layer}}{list.}
+\item{\code{abstraction.layer}}{list. A description of the relationship between the precise data type (e.g. a chromatin mark like H3K27ac)
+and feature describing the functional category in the decision.matrix (e.g. Regulatory).}
 
-\item{\code{decision.matrix}}{matrix.}
+\item{\code{decision.matrix}}{matrix. The description of what combination of features are required to call a state.}
 
-\item{\code{state.colors}}{character.}
+\item{\code{state.colors}}{character. The color to assign to each state.}
 }}
+\examples{
+load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"))
+poised.promoter.model
+decisionMatrix(poised.promoter.model)
+abstractionLayer(poised.promoter.model)
+stateColors(poised.promoter.model)
+}
 

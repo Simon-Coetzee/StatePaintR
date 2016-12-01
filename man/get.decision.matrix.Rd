@@ -10,9 +10,14 @@ get.decision.matrix(search)
 \item{search}{character string of either unique id, or search term.}
 }
 \value{
-decisionMatrix object
+\code{\linkS4class{decisionMatrix}} object
 }
 \description{
 Retrieve Decision Matrix from StateHub
+}
+\examples{
+get.decision.matrix(search = "Cedars-Sinai")
+poised.promoter.model <- get.decision.matrix("5813b67f46e0fb06b493ceb0")
+poised.promoter.model
 }
 

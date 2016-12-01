@@ -71,6 +71,7 @@ GetBioFeatures <- function(manifest, my.seqinfo) {
 }
 
 parse.manifest <- function(manifest) {
+  if(!file.exists(manifest)) stop("manifest file: ", manifest, " does not exist")
   manifest.df <- read.table(manifest, sep = "\t", stringsAsFactors = FALSE, header = TRUE)
   valid.columns <- colnames(manifest.df) == c("SAMPLE",
                                               "MARK",

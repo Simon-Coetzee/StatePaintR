@@ -1,0 +1,9 @@
+SAMPLE	MARK	SRC	BUILD	FILE
+E119	H3K4me1	roadmap	hg19	E119-H3K4me1.narrowPeak.gz
+E119	H3K4me3	roadmap	hg19	E119-H3K4me3.narrowPeak.gz
+E119	H3K27ac	roadmap	hg19	E119-H3K27ac.narrowPeak.gz
+E119	H3K27me3	roadmap	hg19	E119-H3K27me3.gappedPeak.gz
+E119	H3K9me3	roadmap	hg19	E119-H3K9me3.gappedPeak.gz
+E119	H3K36me3	roadmap	hg19	E119-H3K36me3.gappedPeak.gz
+E119	H3K27me3.n	roadmap	hg19	E119-H3K27me3.narrowPeak.gz
+E119	DNase	roadmap	hg19	E119-DNase.macs2.narrowPeak.gz

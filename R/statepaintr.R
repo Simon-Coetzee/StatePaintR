@@ -1,11 +1,28 @@
 #' Run a StatePaintR decisionMatrix against a group of files listed in a manifest.
 #'
-#' @param manifest
-#' @param decisionMatrix
-#' @param scoreStates
-#' @param progress
+#' @param manifest A character vector containing the filename of the manifest file. See details for the expected format
+#' @param decisionMatrix An object of class \code{\linkS4class{decisionMatrix}}.
+#' @param scoreStates logical; if scores have been specified in the decisionMatrix, should the states be scored?
+#' @param progress logical; show progress bar and timing details?
 #'
-#' @return
+#' @return A \code{\link{GRangesList}}, each \code{\link{GRanges}} object describing the states of all
+#' segements for a sample. Each range is described by the fields \code{name} indicating the sample,
+#' \code{state} indicating the state, and optionally \code{score} indicating the score of the state
+#' @details The manifest is a tab delimited file containing five fields; SAMPLE, MARK, SRC, BUILD, and FILE. \cr
+#' `SAMPLE` refers to the sample to which the marks are related, like a cell line, or tissue. \cr
+#' `MARK` refers to the chromatin mark, or other feature described in the \code{\linkS4class{decisionMatrix}} \code{abstractionLayer} \cr
+#' `SRC` refers to the source of the data, retained for documentation, but not used in the functions. \cr
+#' `BUILD` refers to the genome build of the data tracks. All tracks under a single sample must be of the same genome build. \cr
+#' `FILE` refers to the location of the file describing the mark. Can be .bed, .narrowPeak, .gappedPeak, etc. Only the first three
+#' columns are used, `chromosome`, `start`, and `end`, unless \code{scoreStates = TRUE}, in which case a narrowPeak file is required.
+#' @examples
+#' manifest <- system.file("extdata", "manifest.hmec.txt", package = "StatePaintR")
+#' load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"))
+#' states <- PaintStates(manifest = manifest,
+#'                       decisionMatrix = poised.promoter.model,
+#'                       scoreStates = FALSE, progress = FALSE)
+#' states
+#'
 #' @importFrom GenomicRanges disjoin findOverlaps reduce
 #' @importFrom S4Vectors from to
 #' @importFrom stringr str_detect coll str_replace
@@ -13,9 +30,8 @@
 #' @importFrom matrixStats rowMedians
 #' @importFrom IRanges %outside%
 #' @importFrom utils txtProgressBar setTxtProgressBar
-#' @export
 #'
-#' @examples
+#' @export
 PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE) {
   start.time <- Sys.time()
   if(missing(manifest)) {stop("provide a manifest describing the location of your files \n",
@@ -189,7 +205,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   if(length(samples) > 1) {
     output <- GRangesList(output)
   }
-  close(pb)
+  if(progress) close(pb)
   names(output) <- names(samples)
   attributes(output)$manifest <- samples
   done.time <- Sys.time() - start.time
@@ -199,15 +215,21 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 
 #' Write StatePaintR object to bedfiles
 #'
-#' @param states
-#' @param decisionMatrix
-#' @param output.dir
+#' @param states A GRangesList produced by \code{\link{PaintStates}}
+#' @param decisionMatrix The \code{\linkS4class{decisionMatrix}} object used to produce the states
+#' @param output.dir A character string indicating the directory to save the exported states.
+#' The directory will be created if it does not exist.
 #'
 #' @importFrom rtracklayer export.bed
 #' @importFrom dplyr left_join
-#' @return
+#' @return Invisibly returns the states object.
 #' @export
-#' @example
+#' @examples
+#' \dontrun{
+#' ExportStatePaintR(states = states,
+#'                   decisionMatrix = poised.promoter.model,
+#'                   output.dir = tempdir())
+#' }
 ExportStatePaintR <- function(states, decisionMatrix, output.dir) {
   if(missing(output.dir)) { stop("please indicate output directory") }
   if(missing(decisionMatrix)) { stop("please include decisionMatrix") }
@@ -227,19 +249,23 @@ ExportStatePaintR <- function(states, decisionMatrix, output.dir) {
   }
   close(pb)
   message("segmentation files written to: ", output.dir)
+  return(invisible(states))
 }
 
 #' Retrieve Decision Matrix from StateHub
 #'
 #' @param search character string of either unique id, or search term.
 #'
-#' @return decisionMatrix object
+#' @return \code{\linkS4class{decisionMatrix}} object
 #' @importFrom httr content GET http_error modify_url
 #' @importFrom jsonlite toJSON fromJSON
 #' @importFrom stringr str_extract
 #' @export
 #'
 #' @examples
+#' get.decision.matrix(search = "Cedars-Sinai")
+#' poised.promoter.model <- get.decision.matrix("5813b67f46e0fb06b493ceb0")
+#' poised.promoter.model
 get.decision.matrix <- function(search) {
   if(missing(search)) { stop("missing search argument") }
   stateHub <- modify_url("http://statehub.org/statehub", path = "statehub/getmodel.jsp")
@@ -282,21 +308,20 @@ get.decision.matrix <- function(search) {
   return(output)
 }
 
-#' Title
+#' decisionMatrix class
 #'
-#' @slot id character.
-#' @slot name character.
-#' @slot author character.
-#' @slot revision character.
-#' @slot description character.
-#' @slot abstraction.layer list.
-#' @slot decision.matrix matrix.
-#' @slot state.colors character.
+#' @slot id character. a unique ID that refers to a model revision
+#' @slot name character. The name of the model on StateHub
+#' @slot author character. The author of the model on StateHub
+#' @slot revision character. The revision of the model. A time stamp
+#' @slot description character. A short description of the model.
+#' @slot abstraction.layer list. A description of the relationship between the precise data type (e.g. a chromatin mark like H3K27ac)
+#' and feature describing the functional category in the decision.matrix (e.g. Regulatory).
+#' @slot decision.matrix matrix. The description of what combination of features are required to call a state.
+#' @slot state.colors character. The color to assign to each state.
 #'
-#' @return
 #' @export
 #'
-#' @examples
 setClass(Class = "decisionMatrix",
          slots = list(id = "character",
                       name = "character",
@@ -308,29 +333,24 @@ setClass(Class = "decisionMatrix",
                       state.colors = "character"))
 
 setGeneric("decisionMatrix", function(object) standardGeneric("decisionMatrix"))
-#' Extract Descision Matrix from descisionMatrix object
-#'
-#' @param object decisionMatrix.
-#'
-#' @return matrix descisionMatrix stripped of metadata
+#' @describeIn decisionMatrix Extract Descision Matrix from descisionMatrix object
 #' @export
-#'
 #' @examples
+#' load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"))
+#' poised.promoter.model
+#' decisionMatrix(poised.promoter.model)
 setMethod("decisionMatrix",
           signature = signature(object = "decisionMatrix"),
           function(object) {
             object@decision.matrix
           })
 
+
 setGeneric("abstractionLayer", function(object) standardGeneric("abstractionLayer"))
-#' Extract abstraction layer from descisionMatrix object
-#'
-#' @param object decisionMatrix.
-#'
-#' @return list describing relationship between chromatin marks and functional categories
+#' @describeIn decisionMatrix Extract abstraction layer from descisionMatrix object
 #' @export
-#'
 #' @examples
+#' abstractionLayer(poised.promoter.model)
 setMethod("abstractionLayer",
           signature = signature(object = "decisionMatrix"),
           function(object) {
@@ -338,14 +358,11 @@ setMethod("abstractionLayer",
           })
 
 setGeneric("stateColors", function(object) standardGeneric("stateColors"))
-#' Extract color information from descisionMatrix object
-#'
+#' @describeIn decisionMatrix Extract color information from descisionMatrix object
 #' @param object decisionMatrix.
-#'
-#' @return named vector of colors for chromatin states
 #' @export
-#'
 #' @examples
+#' stateColors(poised.promoter.model)
 setMethod("stateColors",
           signature = signature(object = "decisionMatrix"),
           function(object) {

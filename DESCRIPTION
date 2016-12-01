@@ -1,14 +1,16 @@
 Package: StatePaintR
 Type: Package
 Title: Annotate Chromatin Footprints
-Version: 0.2
+Version: 0.2.1
 Author: Simon Coetzee
 Maintainer: Simon Coetzee <simon.coetzee@cshs.org>
 Description: It does things.
 License: GPL-3
 LazyData: TRUE
 RoxygenNote: 5.0.1
-Imports: GenomeInfoDb,
+Depends: R (>= 3.2), methods
+Imports:
+    GenomeInfoDb,
     GenomicRanges,
     IRanges,
     S4Vectors,
