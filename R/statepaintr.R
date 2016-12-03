@@ -178,7 +178,6 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
             }
           }, orig.gr.cols = mcols(x.f.l[[score.feature]])$score)
           my.scores <- mcols(x.f.l[[score.feature]])[my.scores, "score"]
-          #my.scores <- (my.scores/max(my.scores)) * 1000
         } else {
           my.scores <- 0
         }
@@ -319,7 +318,7 @@ get.decision.matrix <- function(search) {
 #' and feature describing the functional category in the decision.matrix (e.g. Regulatory).
 #' @slot decision.matrix matrix. The description of what combination of features are required to call a state.
 #' @slot state.colors character. The color to assign to each state.
-#'
+#' @import methods
 #' @export
 #'
 setClass(Class = "decisionMatrix",
@@ -332,6 +331,20 @@ setClass(Class = "decisionMatrix",
                       decision.matrix = "matrix",
                       state.colors = "character"))
 
+
+
+
+#' decisionMatrix
+#'
+#' @param object of class decisionMatrix
+#'
+#' @return a matrix; The description of what combination of features are required to call a state.
+#' @export
+#'
+#' @examples
+#' load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"))
+#' poised.promoter.model
+#' decisionMatrix(poised.promoter.model)
 setGeneric("decisionMatrix", function(object) standardGeneric("decisionMatrix"))
 #' @describeIn decisionMatrix Extract Descision Matrix from descisionMatrix object
 #' @export
@@ -346,6 +359,22 @@ setMethod("decisionMatrix",
           })
 
 
+#' abstractionLayer
+#'
+#' @param object of class decisionMatrix
+#'
+#' @return a list; A description of the relationship between the precise data type (e.g. a chromatin mark like H3K27ac)
+#' and feature describing the functional category in the decision.matrix (e.g. Regulatory).
+#' @details In the abstraction layer one may indicate if a functional category should be used for scoring states.
+#' This is done by placing an asterisk at the start of it's name (e.g. *Regulatory). One may also specify that
+#' a certain type of functional category never be split into smaller units by its overlapping with other features.
+#' This is done by placing an asterisk at the end of the name of the functional category (e.g. Core*)
+#' @export
+#'
+#' @examples
+#' load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"))
+#' poised.promoter.model
+#' abstractionLayer(poised.promoter.model)
 setGeneric("abstractionLayer", function(object) standardGeneric("abstractionLayer"))
 #' @describeIn decisionMatrix Extract abstraction layer from descisionMatrix object
 #' @export
@@ -357,6 +386,17 @@ setMethod("abstractionLayer",
             object@abstraction.layer
           })
 
+#' stateColors
+#'
+#' @param object of class decisionMatrix
+#'
+#' @return character. The color to assign to each state.
+#' @export
+#'
+#' @examples
+#' load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"))
+#' poised.promoter.model
+#' abstractionLayer(poised.promoter.model)
 setGeneric("stateColors", function(object) standardGeneric("stateColors"))
 #' @describeIn decisionMatrix Extract color information from descisionMatrix object
 #' @param object decisionMatrix.
