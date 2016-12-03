@@ -227,7 +227,7 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
 reverse_tl <- function(tl) {
   values <- sapply(tl, length)
   values <- rep(names(values), values)
-  keys <- unlist(tl, use.names = F)
+  keys <- unlist(tl, use.names = FALSE)
   names(values) <- keys
   return(as.list(values))
 }

@@ -17,6 +17,9 @@
 \arguments{
 \item{object}{decisionMatrix.}
 }
+\value{
+an object of class decisionMatrix, normally made in response to a query to StateHub with \code{\link{get.decision.matrix}}
+}
 \description{
 decisionMatrix class
 }

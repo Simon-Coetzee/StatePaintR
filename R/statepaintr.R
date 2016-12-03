@@ -142,7 +142,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     if(progress) setTxtProgressBar(pb, lc)
     if(scoreStates) {
       dl.score <- dl[, names(signalCol)]
-      score.cells <- which(dl.score == 3L, arr.ind = T)
+      score.cells <- which(dl.score == 3L, arr.ind = TRUE)
       segments <- data.frame(state = footprintlookup(resmatrix, dl)[, 1], score = NA, stringsAsFactors = FALSE)
       score.features <- unique(segments$state)[(unique(segments$state) %in% rownames(score.cells))]
       for(score.feature in score.features) {
@@ -318,7 +318,9 @@ get.decision.matrix <- function(search) {
 #' and feature describing the functional category in the decision.matrix (e.g. Regulatory).
 #' @slot decision.matrix matrix. The description of what combination of features are required to call a state.
 #' @slot state.colors character. The color to assign to each state.
+#'
 #' @import methods
+#' @return an object of class decisionMatrix, normally made in response to a query to StateHub with \code{\link{get.decision.matrix}}
 #' @export
 #'
 setClass(Class = "decisionMatrix",
