@@ -197,7 +197,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     }
     x.f <- sort(do.call(c, unlist(x.f.l, use.names = FALSE)))
     x.f$score <- (x.f$score/max(x.f$score)) * 1000
-    x.f[is.na(mcols(x.f)$score), "score"] <- 0 
+    mcols(x.f)[is.na(mcols(x.f)$score), "score"] <- 0 
     output <- c(output, x.f)
     lc <- lc + 1
     if(progress) setTxtProgressBar(pb, lc)
