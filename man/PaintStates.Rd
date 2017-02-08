@@ -41,4 +41,3 @@ states <- PaintStates(manifest = manifest,
 states
 
 }
-

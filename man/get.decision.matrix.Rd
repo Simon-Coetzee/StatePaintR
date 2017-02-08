@@ -20,4 +20,3 @@ get.decision.matrix(search = "Cedars-Sinai")
 poised.promoter.model <- get.decision.matrix("5813b67f46e0fb06b493ceb0")
 poised.promoter.model
 }
-

@@ -27,4 +27,3 @@ ExportStatePaintR(states = states,
                   output.dir = tempdir())
 }
 }
-

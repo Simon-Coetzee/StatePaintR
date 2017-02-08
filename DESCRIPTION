@@ -8,7 +8,7 @@ Description: Genome annotations are critical for understanding the likely functi
 License: GPL-3
 LazyData: TRUE
 biocViews: DataRepresentation, Software, Visualization, ChIPSeq
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1
 Depends: R (>= 3.3), methods
 Imports:
     GenomeInfoDb,

@@ -7,20 +7,20 @@
 #' @importFrom utils read.table
 #' @importFrom readr read_tsv cols_only col_character col_integer col_number
 GetBioFeatures <- function(manifest, my.seqinfo) {
-  good.files <- sapply(split(manifest, 1:nrow(manifest)), function(x) { file.exists(x$FILE) })
-  if(sum(good.files) < nrow(manifest)) {
+  good.files <- sapply(split(manifest, 1:nrow(manifest)), function(x) file.exists(x$FILE))
+  if (sum(good.files) < nrow(manifest)) {
     stop(paste0("cannot find file: ", manifest[!good.files, "FILE"], "\n"))
   }
   get.files <- split(manifest, 1:nrow(manifest))
   names(get.files) <- paste(manifest$SAMPLE, manifest$MARK, sep = "_")
-  if(anyDuplicated(names(get.files))) {
+  if (anyDuplicated(names(get.files))) {
     stop("the manifest describes multiple files with the same sample name and mark \n",
          "merge these files before running StatePaintR")
   }
   if (sum(good.files) >= 1) {
     bed.list <- lapply(get.files,
                        function(x, s.info) {
-                         if(grepl(".narrowPeak", x$FILE, ignore.case = TRUE)) {
+                         if (grepl(".narrowPeak", x$FILE, ignore.case = TRUE)) {
                            col.types <- cols_only(chr = col_character(),
                                                   start = col_integer(),
                                                   end = col_integer(),
@@ -37,7 +37,7 @@ GetBioFeatures <- function(manifest, my.seqinfo) {
                            col.names <- c("chr", "start", "end")
                            col.numbers <- c(1:3)
                          }
-                         if(any(grepl(".gz$", x$FILE))) {
+                         if (any(grepl(".gz$", x$FILE))) {
                            xf <- suppressWarnings(read_tsv(file = x$FILE, col_names = col.names,
                                                            col_types = col.types,
                                                            progress = FALSE))
@@ -50,7 +50,7 @@ GetBioFeatures <- function(manifest, my.seqinfo) {
                                        data.table = FALSE, showProgress = FALSE)
                          }
                          name <- paste(x$SAMPLE, x$MARK, sep = "_")
-                         if(ncol(xf) < 7) xf$signalValue <- NA
+                         if (ncol(xf) < 7) xf$signalValue <- NA
                          xf <- GRanges(seqnames = xf$chr,
                                        ranges = IRanges(start = xf$start + 1L,
                                                         end = xf$end),
@@ -71,30 +71,37 @@ GetBioFeatures <- function(manifest, my.seqinfo) {
 }
 
 parse.manifest <- function(manifest) {
-  if(!file.exists(manifest)) stop("manifest file: ", manifest, " does not exist")
-  manifest.df <- read.table(manifest, sep = "\t", stringsAsFactors = FALSE, header = TRUE)
+  if (is(manifest, "character")) {
+    if (!file.exists(manifest)) stop("manifest file: ", manifest, " does not exist")
+    manifest.df <- read.table(manifest, sep = "\t", stringsAsFactors = FALSE, header = TRUE)
+    manifest.path <- dirname(manifest)
+  } else {
+    if (!is(manifest, "data.frame")) stop("manifest must be a character vector containing one path name, or a data.frame")
+    manifest.df <- manifest
+    manifest.path <- ""
+  }
   valid.columns <- colnames(manifest.df) == c("SAMPLE",
                                               "MARK",
                                               "SRC",
                                               "BUILD",
                                               "FILE")
-  if(any(!valid.columns)) {
+  if (any(!valid.columns)) {
     stop("manifest file must contain the columns ",
          "'SAMPLE', 'MARK', 'SRC', 'BUILD', and 'FILE'")
   }
-  manifest.path <- dirname(manifest)
   files.good <- file.exists(manifest.df$FILE)
-  if(any(!files.good)) {
+  if (any(!files.good)) {
     test.files <- manifest.df[!files.good, "FILE"]
     test.files <- file.path(manifest.path, test.files)
     new.files.good <- file.exists(test.files)
-    if(any(!new.files.good)) {
-      stop("cannot find files listed in manifest")
+    if (any(!new.files.good)) {
+      stop("cannot find these files listed in manifest:\n",
+           paste0(manifest.df[!new.files.good, "FILE"], collapse = "\n"))
     } else {
       manifest.df[!files.good, "FILE"] <- test.files
     }
   }
-  if(length(unique(sort(manifest.df$BUILD))) > 1) {
+  if (length(unique(sort(manifest.df$BUILD))) > 1) {
     stop("each celltype must be described by one and only one genome build")
   }
   alls <- manifest.df[manifest.df$SAMPLE == "ALL", ]
@@ -108,10 +115,23 @@ parse.manifest <- function(manifest) {
   return(by.sample)
 }
 
+flookup <- function(query, definition) {
+  qr <- matrix(nrow = dim(query)[2])
+  for (i in 1:nrow(definition)) {
+    d <- definition[i,]
+    keepnames <- which(d != 1L)
+    d <- d[keepnames]
+    qt <- query[keepnames, ]
+    x <- colSums((d == qt | (d == 0L & qt != 3))) == length(d)
+    qr[x, 1] <- rownames(definition)[i]
+  }
+  return(qr)
+}
+
 footprintlookup <- function(query, definition) {
   qr <- matrix(nrow = dim(query)[2])
-  if(any(query == 0)) {
-    for(i in 1:nrow(definition)) {
+  if (any(query == 0)) {
+    for (i in 1:nrow(definition)) {
       d <- definition[i, ]
       qt <- query[!is.na(d), ]
       d <- d[!is.na(d)]
@@ -122,12 +142,12 @@ footprintlookup <- function(query, definition) {
       qr[x, 1] <- rownames(definition)[i]
     }
   } else {
-    for(i in 1:nrow(definition)) {
+    for (i in 1:nrow(definition)) {
       d <- definition[i, ]
       qt <- query[!is.na(d)]
       d <- d[!is.na(d)]
       x <- base::.colSums(bitwAnd(d, 1L) == bitwAnd(qt, 1L),
-                          m = length(d), n = length(qt)/length(d),
+                          m = length(d), n = length(qt) / length(d),
                           na.rm = FALSE) == length(d)
       qr[x, 1] <- rownames(definition)[i]
     }
@@ -138,7 +158,7 @@ footprintlookup <- function(query, definition) {
 ## from toupper documentation
 capwords <- function(s, strict = FALSE) {
   cap <- function(s) paste(toupper(substring(s, 1, 1)),
-                           {s <- substring(s, 2); if(strict) tolower(s) else s},
+                           {s <- substring(s, 2); if (strict) tolower(s) else s},
                            sep = "", collapse = " " )
   sapply(strsplit(s, split = " "), cap, USE.NAMES = !is.null(names(s)))
 }
@@ -163,13 +183,13 @@ zero_range <- function(x, tol = .Machine$double.eps ^ 0.5) {
 make.overlap.matrix <- function(query.over, subject.over, samples) {
   overlaps <- data.frame(qhits = query.over,
                          samples = samples[subject.over],
-                         stringsAsFactors = FALSE)
+                         stringsAsFactors = TRUE)
   overlap.table <- table(overlaps)
   output.matrix <- matrix(overlap.table,
                           nrow = nrow(overlap.table),
                           dimnames = list(rownames(overlap.table),
                                           colnames(overlap.table)))
-  if(!is(output.matrix, "matrix")) {
+  if (!is(output.matrix, "matrix")) {
     dim(output.matrix) <- c(length(output.matrix), 1)
     dimnames(output.matrix) <- list(rownames(overlap.table),
                                     colnames(overlap.table))
@@ -187,8 +207,8 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
                              manifest$MARK,
                              manifest$FILE,
                              sep = " "))
-  if(all(names(mcols(x)) == c("name", "state", "score"))) {
-    if(!is.null(color)) {
+  if (all(names(mcols(x)) == c("name", "state", "score"))) {
+    if (!is.null(color)) {
       my.cols <- data.frame(mcols(x), stringsAsFactors = FALSE)
       my.cols <- left_join(my.cols, color, by = c("state" = "STATE"))
       colnames(my.cols) <- c("sample", "name", "score", "itemRgb")
@@ -205,7 +225,7 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
   writeLines(paste("# StateHub Model ID:", hub.id), file)
   writeLines("# it is the chromatin segmentation of the following files: ", file)
   writeLines(meta$files, file)
-  if(!is.null(color)) {
+  if (!is.null(color)) {
     my.track <- new("BasicTrackLine",
                     itemRgb = TRUE,
                     db = x@seqinfo@genome[[1]],
@@ -241,5 +261,203 @@ setMethod("show",
                 "Author:", object@author, "\n",
                 "Revision:", object@revision, "\n",
                 "Description:", object@description, "\n")
+            if (any(grepl("\\*$", names(abstractionLayer(object))))) {
+              cat(" Not Scoring:", grep(pattern = "\\*$",
+                                        x = names(abstractionLayer(object)),
+                                        value = TRUE), "\n")
+            }
+            if (any(grepl("^\\[.*\\]$", names(abstractionLayer(object))))) {
+              cat(" Not Splitting:", grep(pattern = "^\\[.*\\]$",
+                                          x = names(abstractionLayer(object)),
+                                          value = TRUE), "\n")
+            }
           })
 
+
+PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE) {
+  start.time <- Sys.time()
+  if (missing(manifest)) {stop("provide a manifest describing the location of your files \n",
+                               "and the mark that was ChIPed")}
+  if (missing(decisionMatrix)) {stop("provide a decisionMatrix object")}
+  if (is(decisionMatrix, "decisionMatrix")) {
+    deflookup <- reverse_tl(abstractionLayer(decisionMatrix))
+    names(deflookup) <- tolower(names(deflookup))
+    d <- decisionMatrix(decisionMatrix)
+  } else {
+    stop("arg: decisionMatrix must be object of class decisionMatrix")
+  }
+  samples <- parse.manifest(manifest)
+  sample.genomes <- as.list(unique(unlist(sapply(samples, "[", "BUILD"))))
+  sample.genomes.names <- sample.genomes
+  do.seqinfo <- try(Seqinfo(genome = sample.genomes.names[[1]]))
+  if (inherits(do.seqinfo, "try-error")) {
+    sample.genomes <- lapply(sample.genomes.names, function(x) NULL)
+    warning("could not download seqinfo for genome")
+  } else {
+    sample.genomes <- lapply(sample.genomes.names, function(x) Seqinfo(genome = x))
+  }
+  names(sample.genomes) <- sample.genomes.names
+  output <- list()
+  lc <- 0
+  if (progress) pb <- txtProgressBar(min = 0, max = length(samples) * 3, style = 3)
+  for (cell.sample in seq_along(samples)) {
+    lc <- lc + 1
+    if (progress) setTxtProgressBar(pb, lc)
+    cell.sample <- samples[[cell.sample]]
+    x <- GetBioFeatures(manifest = cell.sample, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
+    names(x) <- tolower(names(x))
+    inputset <- names(x)
+    inputset <- sapply(inputset, function(x, y = deflookup) {
+      out <- unlist(y[str_detect(x, paste0(names(y), "$"))], use.names = FALSE)
+      return(out)
+    })
+    names(x) <- inputset
+    to.merge <- inputset[duplicated(inputset)]
+    if (length(to.merge) >= 1) {
+      to.merge <- unique(unlist(to.merge))
+      for (mark in to.merge) {
+        x.merge <- unlist(x[names(x) %in% mark])
+        x.names <- unique(x.merge$feature)
+        x <- x[!(names(x) %in% mark)]
+        names(x.merge) <- NULL
+        x.merge <- reduce(x.merge)
+        mcols(x.merge)$feature <- paste(x.names, collapse = "|")
+        x.merge <- GRangesList(x.merge)
+        names(x.merge) <- mark
+        x <- append(x, x.merge)
+        rm(x.merge)
+      }
+    }
+    inputset.c <- names(inputset)
+    names(inputset.c) <- inputset
+    x.f <- disjoin(unlist(x))
+    if (length(x) == 1) {
+      x.f <- x.f[[1]]
+    }
+
+    dontuseScore.i <- grep(pattern = "\\*$", inputset)
+    inputset <- str_replace(inputset, "\\*$", "")
+    dontbreak.i <- grep(pattern = "^\\[.*\\]$", inputset)
+    inputset <- str_replace(inputset, "^\\[", "")
+    inputset <- str_replace(inputset, "\\]$", "")
+
+    dontbreak <- inputset[dontbreak.i]
+    dontuseScore <- inputset[dontuseScore.i]
+
+    names(x) <- inputset
+    if (length(dontbreak) > 0) {
+      x.f <- x.f[x.f %outside% x[dontbreak]]
+      unfrag <- reduce(sort(do.call(c, list(unlist(x[dontbreak]), ignore.mcols = TRUE))))
+      x.f <- c(x.f, unfrag, ignore.mcols = TRUE)
+      x.f <- sort(x.f)
+    }
+    overlaps <- findOverlaps(x.f, x)
+    resmatrix <- make.overlap.matrix(from(overlaps), to(overlaps), names(x))
+    resmatrix <- resmatrix[, colnames(d)[colnames(d) %in% colnames(resmatrix)]]
+    if (scoreStates) {
+      scorematrix <- resmatrix
+      signalCol <- sapply(x, function(x) !is.na(mcols(x)[1, "signalValue"]))
+      signalCol <- signalCol[!(names(signalCol) %in% dontuseScore)]
+      signalCol <- which(signalCol[colnames(scorematrix)])
+      for (feature in names(signalCol)) {
+        scoreOverlaps <- findOverlaps(x.f, x[[feature]])
+        scorematrix[from(scoreOverlaps), feature] <- mcols(x[[feature]])[to(scoreOverlaps), "signalValue"]
+        scorematrix[, feature] <- frankv(scorematrix[, feature], ties.method = "average")
+      }
+      scorematrix <- scorematrix[, names(signalCol), drop = FALSE]
+    }
+
+    resmatrix <- resmatrix + 2L
+
+    missing.data <- colnames(d)[!(colnames(d) %in% colnames(resmatrix))]
+    if (any(is.na(d))) {
+      message("using legacy decision matrix, NA converted to 1L")
+      d[is.na(d)] <- 1L
+    }
+
+    lmd <- length(missing.data)
+    if (lmd > 0) {
+      dl <- d[-which(matrix(bitwAnd(d[, missing.data, drop = FALSE], 2L) == 2L, ncol = lmd), arr.ind = TRUE)[,1], -which(colnames(d) %in% missing.data), drop = FALSE]
+    }
+    d.order <- dl
+    d.order[dl == 1] <- 0
+    d.order[dl == 0] <- 1
+    dl <- dl[order(rowSums(d.order, na.rm = TRUE), decreasing = FALSE), ]
+    resmatrix <- t(resmatrix)
+    mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
+    lc <- lc + 1
+    if (progress) setTxtProgressBar(pb, lc)
+    if (scoreStates) {
+      dl.score <- dl[, names(signalCol)]
+      score.cells <- which(dl.score == 3L, arr.ind = TRUE)
+      if (length(signalCol) == 1) {
+        score.cells <- matrix(score.cells, ncol = 1, dimnames = list(names(score.cells), c("row")))
+        score.cells <- cbind(score.cells, col = 1)
+      }
+      segments <- data.frame(state = flookup(resmatrix, dl)[, 1], median = NA, mean = NA, max = NA, stringsAsFactors = FALSE)
+      score.features <- unique(segments$state)[(unique(segments$state) %in% rownames(score.cells))]
+      for (score.feature in score.features) {
+        feature.scores <- scorematrix[segments$state == score.feature, score.cells[rownames(score.cells) %in% score.feature, "col"]]
+        feature.scores.df <- data.frame(median = numeric(), mean = numeric(), max = numeric())
+        if (is(feature.scores, "matrix")) {
+          feature.scores.df <- rbind.data.frame(feature.scores.df, data.frame(median = rowMedians(feature.scores), mean = rowMeans(feature.scores), max = rowMaxs(feature.scores)))
+        } else {
+          feature.scores.df <- rbind.data.frame(feature.scores.df, data.frame(median = feature.scores / 2, mean = feature.scores / 2, max = feature.scores))
+        }
+        segments[segments$state == score.feature, c("median", "mean", "max")] <- feature.scores.df
+      }
+      # feature.score.bm2 <<- feature.score.tmp1
+      mcols(x.f)$state <- segments$state
+      mcols(x.f)[, c("median", "mean", "max")] <- DataFrame(segments[, c("median", "mean", "max")])
+    } else {
+      mcols(x.f)$state <- flookup(resmatrix, dl)[, 1]
+    }
+    x.f.l <- split(x.f, x.f$state)
+    if (scoreStates) {
+      x.f.ll <- lapply(x.f.l, reduce, with.revmap = TRUE)
+      for (state.name in names(x.f.ll)) {
+        if (state.name %in% score.features) {
+          score.feature <- state.name
+          revmap <- mcols(x.f.ll[[score.feature]])$revmap
+          revmap <- sapply(revmap, function(x) {x[1]})
+          my.scores <- mcols(x.f.l[[score.feature]])[revmap, c("median", "mean", "max")]
+        } else {
+          my.scores <- DataFrame(median = rep.int(0, length(x.f.ll[[state.name]])), mean = rep.int(0, length(x.f.ll[[state.name]])), max = rep.int(0, length(x.f.ll[[state.name]])))
+        }
+        mcols(x.f.ll[[state.name]])$revmap <- NULL
+        mcols(x.f.ll[[state.name]])$name <- cell.sample[1, "SAMPLE"]
+        mcols(x.f.ll[[state.name]])$state <- state.name
+
+        mcols(x.f.ll[[state.name]])[, c("median", "mean", "max")] <- lapply(my.scores, function(x) {
+          if(max(x) > 0) {
+            (x/max(x)) * 1000
+          } else {
+            0
+          }
+        })
+
+      }
+      x.f.l <- x.f.ll
+    } else {
+      x.f.l <- lapply(x.f.l, reduce)
+      for (state.name in names(x.f.l)) {
+        mcols(x.f.l[[state.name]])$name <- cell.sample[1, "SAMPLE"]
+        mcols(x.f.l[[state.name]])$state <- state.name
+        mcols(x.f.l[[state.name]])$score <- 0
+      }
+    }
+    x.f <- sort(do.call(c, unlist(x.f.l, use.names = FALSE)))
+    output <- c(output, x.f)
+    lc <- lc + 1
+    if (progress) setTxtProgressBar(pb, lc)
+  }
+  if (length(samples) > 1) {
+    output <- GRangesList(output)
+  }
+  if (progress) close(pb)
+  names(output) <- names(samples)
+  attributes(output)$manifest <- samples
+  done.time <- Sys.time() - start.time
+  if (progress) message("processed ", length(samples), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
+  return(output)
+}

@@ -20,4 +20,3 @@ load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"
 poised.promoter.model
 abstractionLayer(poised.promoter.model)
 }
-

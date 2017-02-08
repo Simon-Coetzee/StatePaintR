@@ -2,9 +2,9 @@
 % Please edit documentation in R/statepaintr.R
 \docType{class}
 \name{decisionMatrix-class}
-\alias{abstractionLayer,decisionMatrix-method}
-\alias{decisionMatrix,decisionMatrix-method}
 \alias{decisionMatrix-class}
+\alias{decisionMatrix,decisionMatrix-method}
+\alias{abstractionLayer,decisionMatrix-method}
 \alias{stateColors,decisionMatrix-method}
 \title{decisionMatrix class}
 \usage{
@@ -31,6 +31,7 @@ decisionMatrix class
 
 \item \code{stateColors}: Extract color information from descisionMatrix object
 }}
+
 \section{Slots}{
 
 \describe{
@@ -51,6 +52,7 @@ and feature describing the functional category in the decision.matrix (e.g. Regu
 
 \item{\code{state.colors}}{character. The color to assign to each state.}
 }}
+
 \examples{
 load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"))
 poised.promoter.model
@@ -58,4 +60,3 @@ decisionMatrix(poised.promoter.model)
 abstractionLayer(poised.promoter.model)
 stateColors(poised.promoter.model)
 }
-

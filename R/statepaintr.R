@@ -24,20 +24,21 @@
 #' states
 #'
 #' @importFrom GenomicRanges disjoin findOverlaps reduce
-#' @importFrom S4Vectors from to
+#' @importFrom S4Vectors from to DataFrame
 #' @importFrom stringr str_detect coll str_replace
 #' @importFrom data.table frankv
-#' @importFrom matrixStats rowMedians
+#' @importFrom matrixStats rowMedians rowMaxs
+#' @importFrom Matrix rowMeans
 #' @importFrom IRanges %outside%
 #' @importFrom utils txtProgressBar setTxtProgressBar
 #'
 #' @export
 PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE) {
   start.time <- Sys.time()
-  if(missing(manifest)) {stop("provide a manifest describing the location of your files \n",
+  if (missing(manifest)) {stop("provide a manifest describing the location of your files \n",
                               "and the mark that was ChIPed")}
-  if(missing(decisionMatrix)) {stop("provide a decisionMatrix object")}
-  if(is(decisionMatrix, "decisionMatrix")) {
+  if (missing(decisionMatrix)) {stop("provide a decisionMatrix object")}
+  if (is(decisionMatrix, "decisionMatrix")) {
     deflookup <- reverse_tl(abstractionLayer(decisionMatrix))
     names(deflookup) <- tolower(names(deflookup))
     d <- decisionMatrix(decisionMatrix)
@@ -48,8 +49,8 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   sample.genomes <- as.list(unique(unlist(sapply(samples, "[", "BUILD"))))
   sample.genomes.names <- sample.genomes
   do.seqinfo <- try(Seqinfo(genome = sample.genomes.names[[1]]))
-  if(inherits(do.seqinfo, "try-error")) {
-    sample.genomes <- lapply(sample.genomes.names, function(x) Seqinfo(genome = NA))
+  if (inherits(do.seqinfo, "try-error")) {
+    sample.genomes <- lapply(sample.genomes.names, function(x) NULL)
     warning("could not download seqinfo for genome")
   } else {
     sample.genomes <- lapply(sample.genomes.names, function(x) Seqinfo(genome = x))
@@ -57,10 +58,10 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   names(sample.genomes) <- sample.genomes.names
   output <- list()
   lc <- 0
-  if(progress) pb <- txtProgressBar(min = 0, max = length(samples)*3, style = 3)
-  for(cell.sample in seq_along(samples)) {
+  if (progress) pb <- txtProgressBar(min = 0, max = length(samples) * 3, style = 3)
+  for (cell.sample in seq_along(samples)) {
     lc <- lc + 1
-    if(progress) setTxtProgressBar(pb, lc)
+    if (progress) setTxtProgressBar(pb, lc)
     cell.sample <- samples[[cell.sample]]
     x <- GetBioFeatures(manifest = cell.sample, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
     names(x) <- tolower(names(x))
@@ -71,9 +72,9 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
       })
     names(x) <- inputset
     to.merge <- inputset[duplicated(inputset)]
-    if(length(to.merge) >= 1) {
+    if (length(to.merge) >= 1) {
       to.merge <- unique(unlist(to.merge))
-      for(mark in to.merge) {
+      for (mark in to.merge) {
         x.merge <- unlist(x[names(x) %in% mark])
         x.names <- unique(x.merge$feature)
         x <- x[!(names(x) %in% mark)]
@@ -88,23 +89,22 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     }
     inputset.c <- names(inputset)
     names(inputset.c) <- inputset
-    nameorder <- inputset.c[colnames(d)[colnames(d) %in% names(inputset.c)]]
     x.f <- disjoin(unlist(x))
-    if(length(x) == 1) {
+    if (length(x) == 1) {
       x.f <- x.f[[1]]
     }
-    dontbreak <- str_replace(inputset[grep(pattern = "^\\*", inputset)], "^\\*", "")
-    dontbreak <- str_replace(dontbreak, "\\*$", "")
 
-    useScore <- str_replace(inputset[grep(pattern = "\\*$", inputset)], "\\*$", "")
-    useScore <- str_replace(useScore, "^\\*", "")
-
-    inputset <- str_replace(inputset, "^\\*", "")
+    dontuseScore.i <- grep(pattern = "\\*$", inputset)
     inputset <- str_replace(inputset, "\\*$", "")
+    dontbreak.i <- grep(pattern = "^\\[.*\\]$", inputset)
+    inputset <- str_replace(inputset, "^\\[", "")
+    inputset <- str_replace(inputset, "\\]$", "")
 
-    names(x) <- str_replace(inputset, "^\\*", "")
-    names(x) <- str_replace(inputset, "\\*$", "")
-    if(length(dontbreak) > 0) {
+    dontbreak <- inputset[dontbreak.i]
+    dontuseScore <- inputset[dontuseScore.i]
+
+    names(x) <- inputset
+    if (length(dontbreak) > 0) {
       x.f <- x.f[x.f %outside% x[dontbreak]]
       unfrag <- reduce(sort(do.call(c, list(unlist(x[dontbreak]), ignore.mcols = TRUE))))
       x.f <- c(x.f, unfrag, ignore.mcols = TRUE)
@@ -113,59 +113,98 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     overlaps <- findOverlaps(x.f, x)
     resmatrix <- make.overlap.matrix(from(overlaps), to(overlaps), names(x))
     resmatrix <- resmatrix[, colnames(d)[colnames(d) %in% colnames(resmatrix)]]
-    if(scoreStates) {
+    if (scoreStates) {
       scorematrix <- resmatrix
       signalCol <- sapply(x, function(x) !is.na(mcols(x)[1, "signalValue"]))
-      if(length(useScore) < 1) useScore <- names(signalCol)
-      signalCol <- signalCol[names(signalCol) %in% useScore]
+      signalCol <- signalCol[!(names(signalCol) %in% dontuseScore)]
       signalCol <- which(signalCol[colnames(scorematrix)])
-      for(feature in names(signalCol)) {
+      for (feature in names(signalCol)) {
         scoreOverlaps <- findOverlaps(x.f, x[[feature]])
         scorematrix[from(scoreOverlaps), feature] <- mcols(x[[feature]])[to(scoreOverlaps), "signalValue"]
         scorematrix[, feature] <- frankv(scorematrix[, feature], ties.method = "average")
       }
-      scorematrix <- scorematrix[, names(signalCol)]
+      scorematrix <- scorematrix[, names(signalCol), drop = FALSE]
     }
-    resmatrix[resmatrix == 0L] <- 2L
-    resmatrix[resmatrix == 1L] <- 3L
+
+    resmatrix <- resmatrix + 2L
+
     missing.data <- colnames(d)[!(colnames(d) %in% colnames(resmatrix))]
-    if(length(missing.data) > 0){
-      d.m <- d[, missing.data] > 1
-      d.m[is.na(d.m)] <- FALSE
-      if(!inherits(d.m, "matrix")) d.m <- matrix(d.m, ncol = 1, dimnames = list(c(names(d.m)), c("SAMPLE")))
-      dl <- d[rowSums(d.m) < 1, colnames(d) %in% colnames(resmatrix)]
+    if (any(is.na(d))) {
+      #message("using legacy decision matrix, NA converted to 1L")
+      d[is.na(d)] <- 1L
     }
-    dl <- dl[order(rowSums(dl, na.rm = TRUE), decreasing = FALSE), ]
+
+    lmd <- length(missing.data)
+    if (lmd > 0) {
+      dl <- d[-which(matrix(bitwAnd(d[, missing.data, drop = FALSE], 2L) == 2L, ncol = lmd), arr.ind = TRUE)[,1], -which(colnames(d) %in% missing.data), drop = FALSE]
+    }
+    d.order <- dl
+    d.order[dl == 1] <- 0
+    d.order[dl == 0] <- 1
+    dl <- dl[order(rowSums(d.order, na.rm = TRUE), decreasing = FALSE), ]
+    resmatrix <- t(resmatrix)
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
-    resmatrix <- t(resmatrix);
     lc <- lc + 1
-    if(progress) setTxtProgressBar(pb, lc)
-    if(scoreStates) {
+    if (progress) setTxtProgressBar(pb, lc)
+    if (scoreStates) {
       dl.score <- dl[, names(signalCol)]
       score.cells <- which(dl.score == 3L, arr.ind = TRUE)
-      segments <- data.frame(state = footprintlookup(resmatrix, dl)[, 1], score = NA, stringsAsFactors = FALSE)
+      if (length(signalCol) == 1) {
+        score.cells <- matrix(score.cells, ncol = 1, dimnames = list(names(score.cells), c("row")))
+        score.cells <- cbind(score.cells, col = 1)
+      }
+      segments <- data.frame(state = flookup(resmatrix, dl)[, 1], score = NA, stringsAsFactors = FALSE) ### change footprint to flookup
+      #segments <- data.frame(state = flookup(resmatrix, dl)[, 1], median = NA, mean = NA, max = NA, stringsAsFactors = FALSE)
       score.features <- unique(segments$state)[(unique(segments$state) %in% rownames(score.cells))]
-      for(score.feature in score.features) {
+      for (score.feature in score.features) {
         feature.scores <- scorematrix[segments$state == score.feature, score.cells[rownames(score.cells) %in% score.feature, "col"]]
-        if(is(feature.scores, "matrix")) {
-          feature.scores <- rowMedians(feature.scores)
+        ## debug
+        # if (score.feature == score.features[[1]]) {
+        #   feature.score.tmp1 <- scorematrix[segments$state == score.feature, ]
+        #   feature.score.tmp1 <- cbind(state = segments[segments$state == score.feature, "state"], feature.score.tmp1)
+        #   if (is(feature.scores, "matrix")) {
+        #     feature.score.tmp1 <- cbind(feature.score.tmp1, totalscore = rowMedians(feature.scores))
+        #   } else {
+        #     feature.score.tmp1 <- cbind(feature.score.tmp1, totalscore = feature.scores / 2)
+        #   }
+        # } else {
+        #   feature.score.tmp2 <- scorematrix[segments$state == score.feature, ]
+        #   feature.score.tmp2 <- cbind(state = segments[segments$state == score.feature, "state"], feature.score.tmp2)
+        #   if (is(feature.scores, "matrix")) {
+        #     feature.score.tmp2 <- cbind(feature.score.tmp2, totalscore = rowMedians(feature.scores))
+        #   } else {
+        #     feature.score.tmp2 <- cbind(feature.score.tmp2, totalscore = feature.scores / 2)
+        #   }
+        #   feature.score.tmp1 <- rbind(feature.score.tmp1, feature.score.tmp2)
+        # }
+        ## end debug
+        #feature.scores.df <- data.frame(median = numeric(), mean = numeric(), max = numeric())
+        if (is(feature.scores, "matrix")) {
+          feature.scores <- rowMaxs(feature.scores)
+          #feature.scores.df <- rbind.data.frame(feature.scores.df, data.frame(median = rowMedians(feature.scores), mean = rowMeans(feature.scores), max = rowMaxs(feature.scores)))
         } else {
-          feature.scores <- feature.scores/2
+          feature.scores <- feature.scores
+          #feature.scores <- feature.scores / 2
+          #feature.scores.df <- rbind.data.frame(feature.scores.df, data.frame(median = feature.scores / 2, mean = feature.scores / 2, max = feature.scores))
         }
         segments[segments$state == score.feature, "score"] <- feature.scores
+        #segments[segments$state == score.feature, c("median", "mean", "max")] <- feature.scores.df
       }
+      # feature.score.bm2 <<- feature.score.tmp1
       mcols(x.f)$state <- segments$state
       mcols(x.f)$score <- segments$score
+      #mcols(x.f)[, c("median", "mean", "max")] <- DataFrame(segments[, c("median", "mean", "max")])
     } else {
-      mcols(x.f)$state <- footprintlookup(resmatrix, dl)[, 1]
+      mcols(x.f)$state <- flookup(resmatrix, dl)[, 1]
     }
     x.f.l <- split(x.f, x.f$state)
-    if(scoreStates) {
-      x.f.ll <- lapply(x.f.l, reduce, with.revmap=TRUE)
-      for(state.name in names(x.f.ll)) {
-        if(state.name %in% score.features) {
+    if (scoreStates) {
+      x.f.ll <- lapply(x.f.l, reduce, with.revmap = TRUE)
+      for (state.name in names(x.f.ll)) {
+        if (state.name %in% score.features) {
           score.feature <- state.name
           revmap <- mcols(x.f.ll[[score.feature]])$revmap
+          #revmap <- sapply(revmap, function(x) {x[1]})
           my.scores <- sapply(revmap, function(my.splits, orig.gr.cols) {
             if(length(my.splits) > 1) {
               if(zero_range(orig.gr.cols[my.splits])) {
@@ -178,37 +217,48 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
             }
           }, orig.gr.cols = mcols(x.f.l[[score.feature]])$score)
           my.scores <- mcols(x.f.l[[score.feature]])[my.scores, "score"]
+          #my.scores <- mcols(x.f.l[[score.feature]])[revmap, "score"]
+          #my.scores <- mcols(x.f.l[[score.feature]])[revmap, c("median", "mean", "max")]
         } else {
           my.scores <- 0
+          #my.scores <- DataFrame(median = rep.int(0, length(x.f.ll[[state.name]])), mean = rep.int(0, length(x.f.ll[[state.name]])), max = rep.int(0, length(x.f.ll[[state.name]])))
         }
         mcols(x.f.ll[[state.name]])$revmap <- NULL
         mcols(x.f.ll[[state.name]])$name <- cell.sample[1, "SAMPLE"]
         mcols(x.f.ll[[state.name]])$state <- state.name
-        mcols(x.f.ll[[state.name]])$score <- my.scores
+        if(max(my.scores) > 0) {
+          mcols(x.f.ll[[state.name]])$score <- (my.scores/max(my.scores)) * 1000
+        } else {
+          mcols(x.f.ll[[state.name]])$score <- 0
+        }
+        #mcols(x.f.ll[[state.name]])[, c("median", "mean", "max")] <- my.scores
       }
       x.f.l <- x.f.ll
     } else {
       x.f.l <- lapply(x.f.l, reduce)
-      for(state.name in names(x.f.l)) {
+      for (state.name in names(x.f.l)) {
         mcols(x.f.l[[state.name]])$name <- cell.sample[1, "SAMPLE"]
         mcols(x.f.l[[state.name]])$state <- state.name
         mcols(x.f.l[[state.name]])$score <- 0
       }
     }
     x.f <- sort(do.call(c, unlist(x.f.l, use.names = FALSE)))
-    x.f$score <- (x.f$score/max(x.f$score)) * 1000
+    #x.f$score <- (x.f$score/max(x.f$score)) * 1000
+    # mcols(x.f)[, c("median", "mean", "max")] <- lapply(mcols(x.f)[, c("median", "mean", "max")], function(x) {
+    #   x/max(x) * 1000
+    # })
     output <- c(output, x.f)
     lc <- lc + 1
-    if(progress) setTxtProgressBar(pb, lc)
+    if (progress) setTxtProgressBar(pb, lc)
   }
-  if(length(samples) > 1) {
+  if (length(samples) > 1) {
     output <- GRangesList(output)
   }
-  if(progress) close(pb)
+  if (progress) close(pb)
   names(output) <- names(samples)
   attributes(output)$manifest <- samples
   done.time <- Sys.time() - start.time
-  if(progress) message("processed ", length(samples), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
+  if (progress) message("processed ", length(samples), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
   return(output)
 }
 
@@ -230,14 +280,14 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 #'                   output.dir = tempdir())
 #' }
 ExportStatePaintR <- function(states, decisionMatrix, output.dir) {
-  if(missing(output.dir)) { stop("please indicate output directory") }
-  if(missing(decisionMatrix)) { stop("please include decisionMatrix") }
-  if(!dir.exists(output.dir)) { dir.create(output.dir) }
+  if (missing(output.dir)) { stop("please indicate output directory") }
+  if (missing(decisionMatrix)) { stop("please include decisionMatrix") }
+  if (!dir.exists(output.dir)) { dir.create(output.dir) }
   m.data <- attributes(states)$manifest
   color.key <- stateColors(decisionMatrix)
   hub.id <- decisionMatrix@id
   pb <- txtProgressBar(min = 0, max = length(states), style = 3)
-  for(state in seq_along(states)) {
+  for (state in seq_along(states)) {
     setTxtProgressBar(pb, state)
     s.name <- names(m.data)[state]
     s.m.data <- m.data[[state]]
@@ -266,20 +316,20 @@ ExportStatePaintR <- function(states, decisionMatrix, output.dir) {
 #' poised.promoter.model <- get.decision.matrix("5813b67f46e0fb06b493ceb0")
 #' poised.promoter.model
 get.decision.matrix <- function(search) {
-  if(missing(search)) { stop("missing search argument") }
+  if (missing(search)) { stop("missing search argument") }
   stateHub <- modify_url("http://statehub.org/statehub", path = "statehub/getmodel.jsp")
   query <- GET(stateHub, query = list(id = search))
-  if(length(content(query)) < 1) {
+  if (length(content(query)) < 1) {
     query <- GET(stateHub, query = list(search = search))
-    if(http_error(query)) { stop("site not availible") }
-    if(length(content(query)) < 1) { stop("no search results found") }
+    if (http_error(query)) { stop("site not availible") }
+    if (length(content(query)) < 1) { stop("no search results found") }
   }
   query <- content(query)
-  for(query.i in seq_along(query)) {
+  for (query.i in seq_along(query)) {
     query.result <- query[[query.i]]
     state.names <- sapply(query.result$states, function(x) {x$name})
-    for(state in seq_along(query.result$states)) {
-      if(state == 1) {
+    for (state in seq_along(query.result$states)) {
+      if (state == 1) {
         decision.matrix <- produce.state(query.result$states, state)
       } else {
         decision.matrix <- rbind(decision.matrix, produce.state(query.result$states, state))
@@ -298,10 +348,10 @@ get.decision.matrix <- function(search) {
                            abstraction.layer = fromJSON(toJSON(query.result[["translation"]], auto_unbox = TRUE)),
                            decision.matrix = decision.matrix,
                            state.colors = state.colors)
-    if(query.i > 1) {
-      output <- c(output, decision.matrix)
-    } else {
+    if (query.i <= 1) {
       output <- decision.matrix
+    } else {
+      output <- c(output, decision.matrix)
     }
   }
   return(output)
@@ -367,10 +417,10 @@ setMethod("decisionMatrix",
 #'
 #' @return a list; A description of the relationship between the precise data type (e.g. a chromatin mark like H3K27ac)
 #' and feature describing the functional category in the decision.matrix (e.g. Regulatory).
-#' @details In the abstraction layer one may indicate if a functional category should be used for scoring states.
-#' This is done by placing an asterisk at the start of it's name (e.g. *Regulatory). One may also specify that
+#' @details In the abstraction layer one may indicate if a functional category should not be used for scoring states.
+#' This is done by placing an asterisk at the end of it's name (e.g. Regulatory*). One may also specify that
 #' a certain type of functional category never be split into smaller units by its overlapping with other features.
-#' This is done by placing an asterisk at the end of the name of the functional category (e.g. Core*)
+#' This is done by placing the name of the functional category in square brackets (e.g. [Core])
 #' @export
 #'
 #' @examples
@@ -387,6 +437,86 @@ setMethod("abstractionLayer",
           function(object) {
             object@abstraction.layer
           })
+
+#' doNotScore
+#'
+#' @param decisionMatrix of class decisionMatrix
+#' @param functionalCategory a character vector indicating the functional category to be
+#' excluded from scoring.
+#' @return a decisionMatrix; the abstractionLayer of the decision matrix will be altered
+#' to indicate that the functional category indicated must not be used in scoring calculations.
+#' @details Sometimes one may wish to use a functional category for calling a state, but not use
+#' the functional category for any scoring. This allows the user that option.
+#' @export
+#'
+#' @examples
+#' dm <- get.decision.matrix("5813b67f46e0fb06b493ceb0")
+#' dm <- doNotScore(decisionMatrix = dm, functionalCategory = "Regulatory")
+#' dm
+doNotScore <- function(decisionMatrix, functionalCategory) {
+  if (missing(decisionMatrix)) {
+    stop("provide a decisionMatrix object")
+  }
+  if (missing(functionalCategory)) {
+    stop("provide a functionalCategory to modify")
+  }
+  if (inherits(decisionMatrix, "decisionMatrix")) {
+    categories <- grep(pattern = functionalCategory, x = names(abstractionLayer(decisionMatrix)))
+    if (length(colnames) > 0) {
+      for (category.i in categories) {
+        category <- names(abstractionLayer(decisionMatrix))[category.i]
+        names(decisionMatrix@abstraction.layer)[category.i] <- paste0(category, "*")
+      }
+    }
+  } else {
+    stop("decisionMatrix must be an object of class decisionMatrix")
+  }
+  return(decisionMatrix)
+}
+
+#' doNotSplit
+#'
+#' @param decisionMatrix of class decisionMatrix
+#' @param functionalCategory a character vector indicating intervals described by the
+#'  functional category will never be split into smaller intervals
+#' @return a decisionMatrix; the abstractionLayer of the decision matrix will be altered
+#' to indicate that the functional category indicated must not be split.
+#' @details Some functional categories described in an abstraction layer may perform better
+#' or more like one expects if they are never split into smaller intervals due to being
+#' overlapped by other functional categories. One may indicate if this is the case with this
+#' function
+#' @export
+#'
+#' @examples
+#' dm <- get.decision.matrix("5813b67f46e0fb06b493ceb0")
+#' dm <- doNotSplit(decisionMatrix = dm, functionalCategory = "Core")
+#' dm
+doNotSplit <- function(decisionMatrix, functionalCategory) {
+  if (missing(decisionMatrix)) {
+    stop("provide a decisionMatrix object")
+  }
+  if (missing(functionalCategory)) {
+    stop("provide a functionalCategory to modify")
+  }
+  if (inherits(decisionMatrix, "decisionMatrix")) {
+    categories <- grep(pattern = functionalCategory, x = names(abstractionLayer(decisionMatrix)))
+    if (length(colnames) > 0) {
+      for (category.i in categories) {
+        category <- names(abstractionLayer(decisionMatrix))[category.i]
+        if (grepl("\\*$", category)) {
+          category <- str_replace(category, "\\*$", "")
+          category <- paste0("[", category, "]*")
+        } else {
+          category <- paste0("[", category, "]")
+        }
+        names(decisionMatrix@abstraction.layer)[category.i] <- category
+      }
+    }
+  } else {
+    stop("decisionMatrix must be an object of class decisionMatrix")
+  }
+  return(decisionMatrix)
+}
 
 #' stateColors
 #'

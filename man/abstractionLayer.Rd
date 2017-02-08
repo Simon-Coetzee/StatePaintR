@@ -17,14 +17,13 @@ and feature describing the functional category in the decision.matrix (e.g. Regu
 abstractionLayer
 }
 \details{
-In the abstraction layer one may indicate if a functional category should be used for scoring states.
-This is done by placing an asterisk at the start of it's name (e.g. *Regulatory). One may also specify that
+In the abstraction layer one may indicate if a functional category should not be used for scoring states.
+This is done by placing an asterisk at the end of it's name (e.g. Regulatory*). One may also specify that
 a certain type of functional category never be split into smaller units by its overlapping with other features.
-This is done by placing an asterisk at the end of the name of the functional category (e.g. Core*)
+This is done by placing the name of the functional category in square brackets (e.g. [Core])
 }
 \examples{
 load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"))
 poised.promoter.model
 abstractionLayer(poised.promoter.model)
 }
-
