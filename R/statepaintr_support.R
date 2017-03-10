@@ -13,10 +13,10 @@ GetBioFeatures <- function(manifest, my.seqinfo) {
   }
   get.files <- split(manifest, 1:nrow(manifest))
   names(get.files) <- paste(manifest$SAMPLE, manifest$MARK, sep = "_")
-  if (anyDuplicated(names(get.files))) {
-    stop("the manifest describes multiple files with the same sample name and mark \n",
-         "merge these files before running StatePaintR")
-  }
+  # if (anyDuplicated(names(get.files))) {
+  #   stop("the manifest describes multiple files with the same sample name and mark \n",
+  #        "merge these files before running StatePaintR")
+  # }
   if (sum(good.files) >= 1) {
     bed.list <- lapply(get.files,
                        function(x, s.info) {
@@ -73,21 +73,17 @@ GetBioFeatures <- function(manifest, my.seqinfo) {
 parse.manifest <- function(manifest) {
   if (is(manifest, "character")) {
     if (!file.exists(manifest)) stop("manifest file: ", manifest, " does not exist")
-    manifest.df <- read.table(manifest, sep = "\t", stringsAsFactors = FALSE, header = TRUE)
+    col.names <- c("SAMPLE", "MARK", "SRC", "BUILD", "FILE")
+    manifest.df <- fread(file = manifest,
+                         col.names = col.names,
+                         stringsAsFactors = FALSE,
+                         data.table = FALSE,
+                         showProgress = FALSE)
     manifest.path <- dirname(manifest)
   } else {
     if (!is(manifest, "data.frame")) stop("manifest must be a character vector containing one path name, or a data.frame")
     manifest.df <- manifest
     manifest.path <- ""
-  }
-  valid.columns <- colnames(manifest.df) == c("SAMPLE",
-                                              "MARK",
-                                              "SRC",
-                                              "BUILD",
-                                              "FILE")
-  if (any(!valid.columns)) {
-    stop("manifest file must contain the columns ",
-         "'SAMPLE', 'MARK', 'SRC', 'BUILD', and 'FILE'")
   }
   files.good <- file.exists(manifest.df$FILE)
   if (any(!files.good)) {
@@ -118,10 +114,10 @@ parse.manifest <- function(manifest) {
 flookup <- function(query, definition) {
   qr <- matrix(nrow = dim(query)[2])
   for (i in 1:nrow(definition)) {
-    d <- definition[i,]
+    d <- definition[i, , drop = FALSE]
     keepnames <- which(d != 1L)
     d <- d[keepnames]
-    qt <- query[keepnames, ]
+    qt <- query[keepnames, , drop = FALSE]
     x <- colSums((d == qt | (d == 0L & qt != 3))) == length(d)
     qr[x, 1] <- rownames(definition)[i]
   }

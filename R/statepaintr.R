@@ -23,7 +23,7 @@
 #'                       scoreStates = FALSE, progress = FALSE)
 #' states
 #'
-#' @importFrom GenomicRanges disjoin findOverlaps reduce
+#' @importFrom GenomicRanges disjoin findOverlaps reduce binnedAverage coverage
 #' @importFrom S4Vectors from to DataFrame
 #' @importFrom stringr str_detect coll str_replace
 #' @importFrom data.table frankv
@@ -36,7 +36,7 @@
 PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE) {
   start.time <- Sys.time()
   if (missing(manifest)) {stop("provide a manifest describing the location of your files \n",
-                              "and the mark that was ChIPed")}
+                              "and the mark that was investigated")}
   if (missing(decisionMatrix)) {stop("provide a decisionMatrix object")}
   if (is(decisionMatrix, "decisionMatrix")) {
     deflookup <- reverse_tl(abstractionLayer(decisionMatrix))
@@ -48,6 +48,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   samples <- parse.manifest(manifest)
   sample.genomes <- as.list(unique(unlist(sapply(samples, "[", "BUILD"))))
   sample.genomes.names <- sample.genomes
+  sample.genomes.names <- lapply(sample.genomes.names, function(x) {x <- str_replace(tolower(x), "grch38", "hg38")})
   do.seqinfo <- try(Seqinfo(genome = sample.genomes.names[[1]]))
   if (inherits(do.seqinfo, "try-error")) {
     sample.genomes <- lapply(sample.genomes.names, function(x) NULL)
@@ -57,11 +58,13 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   }
   names(sample.genomes) <- sample.genomes.names
   output <- list()
+  skipped <- list()
   lc <- 0
   if (progress) pb <- txtProgressBar(min = 0, max = length(samples) * 3, style = 3)
   for (cell.sample in seq_along(samples)) {
     lc <- lc + 1
     if (progress) setTxtProgressBar(pb, lc)
+    skipname <- cell.sample
     cell.sample <- samples[[cell.sample]]
     x <- GetBioFeatures(manifest = cell.sample, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
     names(x) <- tolower(names(x))
@@ -70,6 +73,15 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
       out <- unlist(y[str_detect(x, paste0(names(y), "$"))], use.names = FALSE)
       return(out)
       })
+    notInTranslationLayer <- sapply(inputset, is.null)
+    if(all(sapply(inputset, is.null))) {
+      warning(cell.sample[1, "SAMPLE"], " has no MARKs that are present in the translation layer \n",
+              " MARKs included are ", paste(cell.sample[, "MARK"], collapse = " "))
+      skipped <- c(skipped, skipname)
+      next()
+    }
+    x <- x[!notInTranslationLayer]
+    inputset <- inputset[!notInTranslationLayer]
     names(x) <- inputset
     to.merge <- inputset[duplicated(inputset)]
     if (length(to.merge) >= 1) {
@@ -79,20 +91,39 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
         x.names <- unique(x.merge$feature)
         x <- x[!(names(x) %in% mark)]
         names(x.merge) <- NULL
-        x.merge <- reduce(x.merge)
-        mcols(x.merge)$feature <- paste(x.names, collapse = "|")
+        if (scoreStates) {
+          x.merge <- binnedAverage(reduce(x.merge), coverage(x.merge, weight = "signalValue"), varname = "signalValue")
+          mcols(x.merge)$feature <- paste(x.names, collapse = "|")
+          mcols(x.merge) <- mcols(x.merge)[, c(2,1)]
+        } else {
+          x.merge <- reduce(x.merge)
+          mcols(x.merge)$feature <- paste(x.names, collapse = "|")
+          mcols(x.merge)$signalValue <- NA
+        }
         x.merge <- GRangesList(x.merge)
         names(x.merge) <- mark
-        x <- append(x, x.merge)
+        x.new <- try(append(x, x.merge))
+        if(inherits(x.new, "try-error")) browser()
+        x <- x.new
+        #x <- append(x, x.merge)
         rm(x.merge)
+        inputset <- inputset[inputset != mark]
+        inputset <- c(inputset, merged = mark)
       }
     }
+
     inputset.c <- names(inputset)
     names(inputset.c) <- inputset
     x.f <- disjoin(unlist(x))
-    if (length(x) == 1) {
-      x.f <- x.f[[1]]
-    }
+    # if (length(x) == 1) {
+    #   x.f.t <- try(x.f[[1]])
+    #   if(inherits(x.f.t, "try-error")) {
+    #     rm(x.f.t)
+    #   } else {
+    #     x.f <- x.f.t
+    #     rm(x.f.t)
+    #   }
+    # }
 
     dontuseScore.i <- grep(pattern = "\\*$", inputset)
     inputset <- str_replace(inputset, "\\*$", "")
@@ -112,7 +143,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     }
     overlaps <- findOverlaps(x.f, x)
     resmatrix <- make.overlap.matrix(from(overlaps), to(overlaps), names(x))
-    resmatrix <- resmatrix[, colnames(d)[colnames(d) %in% colnames(resmatrix)]]
+    resmatrix <- resmatrix[, colnames(d)[colnames(d) %in% colnames(resmatrix)], drop = FALSE]
     if (scoreStates) {
       scorematrix <- resmatrix
       signalCol <- sapply(x, function(x) !is.na(mcols(x)[1, "signalValue"]))
@@ -141,7 +172,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     d.order <- dl
     d.order[dl == 1] <- 0
     d.order[dl == 0] <- 1
-    dl <- dl[order(rowSums(d.order, na.rm = TRUE), decreasing = FALSE), ]
+    dl <- dl[order(rowSums(d.order, na.rm = TRUE), decreasing = FALSE), , drop = FALSE]
     resmatrix <- t(resmatrix)
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
     lc <- lc + 1
@@ -255,7 +286,14 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     output <- GRangesList(output)
   }
   if (progress) close(pb)
-  names(output) <- names(samples)
+
+  skipped <- unlist(skipped)
+  if (is.null(skipped)) {
+    names(output) <- names(samples)
+  } else {
+    names(output) <- names(samples)[-skipped]
+  }
+
   attributes(output)$manifest <- samples
   done.time <- Sys.time() - start.time
   if (progress) message("processed ", length(samples), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
@@ -268,6 +306,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 #' @param decisionMatrix The \code{\linkS4class{decisionMatrix}} object used to produce the states
 #' @param output.dir A character string indicating the directory to save the exported states.
 #' The directory will be created if it does not exist.
+#' @param progress logical; show progress bar and timing details?
 #'
 #' @importFrom rtracklayer export.bed
 #' @importFrom dplyr left_join
@@ -279,24 +318,24 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 #'                   decisionMatrix = poised.promoter.model,
 #'                   output.dir = tempdir())
 #' }
-ExportStatePaintR <- function(states, decisionMatrix, output.dir) {
+ExportStatePaintR <- function(states, decisionMatrix, output.dir, progress = TRUE) {
   if (missing(output.dir)) { stop("please indicate output directory") }
   if (missing(decisionMatrix)) { stop("please include decisionMatrix") }
   if (!dir.exists(output.dir)) { dir.create(output.dir) }
   m.data <- attributes(states)$manifest
   color.key <- stateColors(decisionMatrix)
   hub.id <- decisionMatrix@id
-  pb <- txtProgressBar(min = 0, max = length(states), style = 3)
+  if (progress) pb <- txtProgressBar(min = 0, max = length(states), style = 3)
   for (state in seq_along(states)) {
-    setTxtProgressBar(pb, state)
-    s.name <- names(m.data)[state]
+    if (progress) setTxtProgressBar(pb, state)
+    s.name <- str_replace(names(m.data)[state], "/", "-")
     s.m.data <- m.data[[state]]
     state <- states[[state]]
     write.state(state, s.m.data, color.key, hub.id,
                 file.path(output.dir,
                           paste0(s.name, ".", nrow(s.m.data), "mark.segmentation.bed")))
   }
-  close(pb)
+  if (progress) close(pb)
   message("segmentation files written to: ", output.dir)
   return(invisible(states))
 }

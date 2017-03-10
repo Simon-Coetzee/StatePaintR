@@ -4,7 +4,7 @@
 \alias{ExportStatePaintR}
 \title{Write StatePaintR object to bedfiles}
 \usage{
-ExportStatePaintR(states, decisionMatrix, output.dir)
+ExportStatePaintR(states, decisionMatrix, output.dir, progress = TRUE)
 }
 \arguments{
 \item{states}{A GRangesList produced by \code{\link{PaintStates}}}
@@ -13,6 +13,8 @@ ExportStatePaintR(states, decisionMatrix, output.dir)
 
 \item{output.dir}{A character string indicating the directory to save the exported states.
 The directory will be created if it does not exist.}
+
+\item{progress}{logical; show progress bar and timing details?}
 }
 \value{
 Invisibly returns the states object.
