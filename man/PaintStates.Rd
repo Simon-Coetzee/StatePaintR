@@ -39,5 +39,5 @@ states <- PaintStates(manifest = manifest,
                       decisionMatrix = poised.promoter.model,
                       scoreStates = FALSE, progress = FALSE)
 states
-Q
+
 }

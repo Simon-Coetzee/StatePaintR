@@ -115,15 +115,6 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     inputset.c <- names(inputset)
     names(inputset.c) <- inputset
     x.f <- disjoin(unlist(x))
-    # if (length(x) == 1) {
-    #   x.f.t <- try(x.f[[1]])
-    #   if(inherits(x.f.t, "try-error")) {
-    #     rm(x.f.t)
-    #   } else {
-    #     x.f <- x.f.t
-    #     rm(x.f.t)
-    #   }
-    # }
 
     dontuseScore.i <- grep(pattern = "\\*$", inputset)
     inputset <- str_replace(inputset, "\\*$", "")
@@ -161,13 +152,14 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 
     missing.data <- colnames(d)[!(colnames(d) %in% colnames(resmatrix))]
     if (any(is.na(d))) {
-      #message("using legacy decision matrix, NA converted to 1L")
       d[is.na(d)] <- 1L
     }
 
     lmd <- length(missing.data)
     if (lmd > 0) {
       dl <- d[-which(matrix(bitwAnd(d[, missing.data, drop = FALSE], 2L) == 2L, ncol = lmd), arr.ind = TRUE)[,1], -which(colnames(d) %in% missing.data), drop = FALSE]
+    } else {
+      dl <- d
     }
     d.order <- dl
     d.order[dl == 1] <- 0
@@ -184,11 +176,14 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
         score.cells <- matrix(score.cells, ncol = 1, dimnames = list(names(score.cells), c("row")))
         score.cells <- cbind(score.cells, col = 1)
       }
-      segments <- data.frame(state = flookup(resmatrix, dl)[, 1], score = NA, stringsAsFactors = FALSE) ### change footprint to flookup
+      segments <- data.frame(state = flookup(resmatrix, dl)[, 1], score = NA, stringsAsFactors = FALSE)
       #segments <- data.frame(state = flookup(resmatrix, dl)[, 1], median = NA, mean = NA, max = NA, stringsAsFactors = FALSE)
       score.features <- unique(segments$state)[(unique(segments$state) %in% rownames(score.cells))]
       for (score.feature in score.features) {
-        feature.scores <- scorematrix[segments$state == score.feature, score.cells[rownames(score.cells) %in% score.feature, "col"]]
+        scorematrix.rows <- segments$state == score.feature
+        feature.scores <- scorematrix[segments$state == score.feature,
+                                      score.cells[rownames(score.cells) %in% score.feature, "col"],
+                                      drop = FALSE]
         ## debug
         # if (score.feature == score.features[[1]]) {
         #   feature.score.tmp1 <- scorematrix[segments$state == score.feature, ]
@@ -235,7 +230,6 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
         if (state.name %in% score.features) {
           score.feature <- state.name
           revmap <- mcols(x.f.ll[[score.feature]])$revmap
-          #revmap <- sapply(revmap, function(x) {x[1]})
           my.scores <- sapply(revmap, function(my.splits, orig.gr.cols) {
             if(length(my.splits) > 1) {
               if(zero_range(orig.gr.cols[my.splits])) {
@@ -258,7 +252,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
         mcols(x.f.ll[[state.name]])$name <- cell.sample[1, "SAMPLE"]
         mcols(x.f.ll[[state.name]])$state <- state.name
         if(max(my.scores) > 0) {
-          mcols(x.f.ll[[state.name]])$score <- (my.scores/max(my.scores)) * 1000
+          mcols(x.f.ll[[state.name]])$score <- ceiling((my.scores/max(my.scores)) * 1000)
         } else {
           mcols(x.f.ll[[state.name]])$score <- 0
         }
