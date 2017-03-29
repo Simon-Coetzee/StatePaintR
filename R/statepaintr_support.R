@@ -73,9 +73,11 @@ GetBioFeatures <- function(manifest, dm, my.seqinfo) {
   }
 }
 
-parse.manifest <- function(manifest) {
+parse.manifest <- function(manifest, check = TRUE) {
   if (is(manifest, "character")) {
-    if (!file.exists(manifest)) stop("manifest file: ", manifest, " does not exist")
+    if (check == TRUE) {
+      if (!file.exists(manifest)) stop("manifest file: ", manifest, " does not exist")
+    }
     col.names <- c("SAMPLE", "MARK", "SRC", "BUILD", "FILE")
     manifest.df <- fread(file = manifest,
                          col.names = col.names,
@@ -89,15 +91,17 @@ parse.manifest <- function(manifest) {
     manifest.path <- ""
   }
   files.good <- file.exists(manifest.df$FILE)
-  if (any(!files.good)) {
-    test.files <- manifest.df[!files.good, "FILE"]
-    test.files <- file.path(manifest.path, test.files)
-    new.files.good <- file.exists(test.files)
-    if (any(!new.files.good)) {
-      stop("cannot find these files listed in manifest:\n",
-           paste0(manifest.df[!new.files.good, "FILE"], collapse = "\n"))
-    } else {
-      manifest.df[!files.good, "FILE"] <- test.files
+  if (check == TRUE) {
+    if (any(!files.good)) {
+      test.files <- manifest.df[!files.good, "FILE"]
+      test.files <- file.path(manifest.path, test.files)
+      new.files.good <- file.exists(test.files)
+      if (any(!new.files.good)) {
+        stop("cannot find these files listed in manifest:\n",
+             paste0(manifest.df[!new.files.good, "FILE"], collapse = "\n"))
+      } else {
+        manifest.df[!files.good, "FILE"] <- test.files
+      }
     }
   }
   if (length(unique(sort(manifest.df$BUILD))) > 1) {
