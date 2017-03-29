@@ -66,7 +66,14 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     if (progress) setTxtProgressBar(pb, lc)
     skipname <- cell.sample
     cell.sample <- samples[[cell.sample]]
-    x <- GetBioFeatures(manifest = cell.sample, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
+    x <- GetBioFeatures(manifest = cell.sample, dm = decisionMatrix, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
+    if(is.null(x)) {
+      warning(cell.sample[1, "SAMPLE"], " has no MARKs that are present in the translation layer \n",
+              " MARKs included are ", paste(cell.sample[, "MARK"], collapse = " "))
+      skipped <- c(skipped, skipname)
+      lc <- lc + 2
+      next()
+    }
     names(x) <- tolower(names(x))
     inputset <- names(x)
     inputset <- sapply(inputset, function(x, y = deflookup) {
@@ -78,6 +85,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
       warning(cell.sample[1, "SAMPLE"], " has no MARKs that are present in the translation layer \n",
               " MARKs included are ", paste(cell.sample[, "MARK"], collapse = " "))
       skipped <- c(skipped, skipname)
+      lc <- lc + 2
       next()
     }
     x <- x[!notInTranslationLayer]
@@ -102,10 +110,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
         }
         x.merge <- GRangesList(x.merge)
         names(x.merge) <- mark
-        x.new <- try(append(x, x.merge))
-        if(inherits(x.new, "try-error")) browser()
-        x <- x.new
-        #x <- append(x, x.merge)
+        x <- append(x, x.merge)
         rm(x.merge)
         inputset <- inputset[inputset != mark]
         inputset <- c(inputset, merged = mark)
@@ -213,6 +218,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
           #feature.scores <- feature.scores / 2
           #feature.scores.df <- rbind.data.frame(feature.scores.df, data.frame(median = feature.scores / 2, mean = feature.scores / 2, max = feature.scores))
         }
+        #if(cell.sample[1,1] == "thyroid gland" & score.feature == "PPR") browser()
         segments[segments$state == score.feature, "score"] <- feature.scores
         #segments[segments$state == score.feature, c("median", "mean", "max")] <- feature.scores.df
       }

@@ -6,7 +6,10 @@
 #' @importFrom S4Vectors mcols mcols<-
 #' @importFrom utils read.table
 #' @importFrom readr read_tsv cols_only col_character col_integer col_number
-GetBioFeatures <- function(manifest, my.seqinfo) {
+GetBioFeatures <- function(manifest, dm, my.seqinfo) {
+  dm@abstraction.layer <- lapply(abstractionLayer(dm), tolower)
+  manifest <- manifest[tolower(manifest$MARK) %in% unlist(abstractionLayer(dm), use.names = FALSE), , drop = FALSE]
+  if(nrow(manifest) < 1) return(NULL)
   good.files <- sapply(split(manifest, 1:nrow(manifest)), function(x) file.exists(x$FILE))
   if (sum(good.files) < nrow(manifest)) {
     stop(paste0("cannot find file: ", manifest[!good.files, "FILE"], "\n"))
@@ -248,6 +251,51 @@ reverse_tl <- function(tl) {
   return(as.list(values))
 }
 
+#' @importFrom jsonlite toJSON fromJSON
+ExportStateHub <- function(states, decisionMatrix, output.dir) {
+  if (missing(output.dir)) { stop("please indicate output directory") }
+  if (missing(decisionMatrix)) { stop("please include decisionMatrix") }
+  if (!dir.exists(output.dir)) { dir.create(output.dir) }
+  if(inherits(states, "GRangesList")) {
+    m.data <- attributes(states)$manifest
+  } else {
+    m.data <- parse.manifest(states)
+  }
+  decisionMatrix@abstraction.layer <- lapply(abstractionLayer(decisionMatrix), tolower)
+  m.data <- lapply(m.data, function(manifest, dm = decisionMatrix) {
+    manifest <- manifest[tolower(manifest$MARK) %in% unlist(abstractionLayer(dm), use.names = FALSE), , drop = FALSE]
+    if(nrow(manifest) < 1) {
+      return(NULL)
+    } else {
+      return(manifest)
+    }
+  })
+  m.data <- m.data[!sapply(m.data, is.null)]
+  df <- data.frame(name = names(m.data),
+                   description = names(m.data),
+                   project = sapply(m.data, function(x) {x[1, "SRC"]}),
+                   genome = sapply(m.data, function(x) {x[1, "BUILD"]}),
+                   marks = NA,
+                   bedFileName = paste0(names(m.data), ".", sapply(m.data, length), "mark.segmentation.bed"),
+                   bigBedFileName = paste0(names(m.data), ".", sapply(m.data, length), "mark.segmentation.bb"),
+                   "statePaintRVersion" = NA,
+                   "modelID" = NA,
+                   baseURL = NA,
+                   Order = NA,
+                   check.names = FALSE,
+                   stringsAsFactors = FALSE)
+  df$marks <- sapply(m.data, function(x) {x[, "MARK"]})
+  df$statePaintRVersion <- as.character(packageVersion("StatePaintR"))
+  df$modelID <- decisionMatrix@id
+  df$baseURL <- "http://s3-us-west-2.amazonaws.com/statehub-trackhub/tracks/"
+  df$order <- 0
+  row.names(df) <- NULL
+  jlist <- list(modelID = decisionMatrix@id,
+                tracks = df)
+  df.json <- toJSON(jlist, pretty = TRUE)
+  writeLines(df.json, con = file.path(output.dir, "manifest.json"))
+  return(invisible(jlist))
+}
 
 setMethod("show",
           signature = signature(object = "decisionMatrix"),
@@ -262,8 +310,8 @@ setMethod("show",
                                         x = names(abstractionLayer(object)),
                                         value = TRUE), "\n")
             }
-            if (any(grepl("^\\[.*\\]$", names(abstractionLayer(object))))) {
-              cat(" Not Splitting:", grep(pattern = "^\\[.*\\]$",
+            if (any(grepl("^\\[.*\\]$|^\\[.*\\]\\*$", names(abstractionLayer(object))))) {
+              cat(" Not Splitting:", grep(pattern = "^\\[.*\\]$|^\\[.*\\]\\*$",
                                           x = names(abstractionLayer(object)),
                                           value = TRUE), "\n")
             }
@@ -273,7 +321,7 @@ setMethod("show",
 PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE) {
   start.time <- Sys.time()
   if (missing(manifest)) {stop("provide a manifest describing the location of your files \n",
-                               "and the mark that was ChIPed")}
+                               "and the mark that was investigated")}
   if (missing(decisionMatrix)) {stop("provide a decisionMatrix object")}
   if (is(decisionMatrix, "decisionMatrix")) {
     deflookup <- reverse_tl(abstractionLayer(decisionMatrix))
@@ -285,6 +333,7 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
   samples <- parse.manifest(manifest)
   sample.genomes <- as.list(unique(unlist(sapply(samples, "[", "BUILD"))))
   sample.genomes.names <- sample.genomes
+  sample.genomes.names <- lapply(sample.genomes.names, function(x) {x <- str_replace(tolower(x), "grch38", "hg38")})
   do.seqinfo <- try(Seqinfo(genome = sample.genomes.names[[1]]))
   if (inherits(do.seqinfo, "try-error")) {
     sample.genomes <- lapply(sample.genomes.names, function(x) NULL)
@@ -294,11 +343,13 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
   }
   names(sample.genomes) <- sample.genomes.names
   output <- list()
+  skipped <- list()
   lc <- 0
   if (progress) pb <- txtProgressBar(min = 0, max = length(samples) * 3, style = 3)
   for (cell.sample in seq_along(samples)) {
     lc <- lc + 1
     if (progress) setTxtProgressBar(pb, lc)
+    skipname <- cell.sample
     cell.sample <- samples[[cell.sample]]
     x <- GetBioFeatures(manifest = cell.sample, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
     names(x) <- tolower(names(x))
@@ -307,6 +358,15 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
       out <- unlist(y[str_detect(x, paste0(names(y), "$"))], use.names = FALSE)
       return(out)
     })
+    notInTranslationLayer <- sapply(inputset, is.null)
+    if(all(sapply(inputset, is.null))) {
+      warning(cell.sample[1, "SAMPLE"], " has no MARKs that are present in the translation layer \n",
+              " MARKs included are ", paste(cell.sample[, "MARK"], collapse = " "))
+      skipped <- c(skipped, skipname)
+      next()
+    }
+    x <- x[!notInTranslationLayer]
+    inputset <- inputset[!notInTranslationLayer]
     names(x) <- inputset
     to.merge <- inputset[duplicated(inputset)]
     if (length(to.merge) >= 1) {
@@ -316,20 +376,27 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
         x.names <- unique(x.merge$feature)
         x <- x[!(names(x) %in% mark)]
         names(x.merge) <- NULL
-        x.merge <- reduce(x.merge)
-        mcols(x.merge)$feature <- paste(x.names, collapse = "|")
+        if (scoreStates) {
+          x.merge <- binnedAverage(reduce(x.merge), coverage(x.merge, weight = "signalValue"), varname = "signalValue")
+          mcols(x.merge)$feature <- paste(x.names, collapse = "|")
+          mcols(x.merge) <- mcols(x.merge)[, c(2,1)]
+        } else {
+          x.merge <- reduce(x.merge)
+          mcols(x.merge)$feature <- paste(x.names, collapse = "|")
+          mcols(x.merge)$signalValue <- NA
+        }
         x.merge <- GRangesList(x.merge)
         names(x.merge) <- mark
         x <- append(x, x.merge)
         rm(x.merge)
+        inputset <- inputset[inputset != mark]
+        inputset <- c(inputset, merged = mark)
       }
     }
+
     inputset.c <- names(inputset)
     names(inputset.c) <- inputset
     x.f <- disjoin(unlist(x))
-    if (length(x) == 1) {
-      x.f <- x.f[[1]]
-    }
 
     dontuseScore.i <- grep(pattern = "\\*$", inputset)
     inputset <- str_replace(inputset, "\\*$", "")
@@ -349,7 +416,7 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
     }
     overlaps <- findOverlaps(x.f, x)
     resmatrix <- make.overlap.matrix(from(overlaps), to(overlaps), names(x))
-    resmatrix <- resmatrix[, colnames(d)[colnames(d) %in% colnames(resmatrix)]]
+    resmatrix <- resmatrix[, colnames(d)[colnames(d) %in% colnames(resmatrix)], drop = FALSE]
     if (scoreStates) {
       scorematrix <- resmatrix
       signalCol <- sapply(x, function(x) !is.na(mcols(x)[1, "signalValue"]))
@@ -367,18 +434,19 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
 
     missing.data <- colnames(d)[!(colnames(d) %in% colnames(resmatrix))]
     if (any(is.na(d))) {
-      message("using legacy decision matrix, NA converted to 1L")
       d[is.na(d)] <- 1L
     }
 
     lmd <- length(missing.data)
     if (lmd > 0) {
       dl <- d[-which(matrix(bitwAnd(d[, missing.data, drop = FALSE], 2L) == 2L, ncol = lmd), arr.ind = TRUE)[,1], -which(colnames(d) %in% missing.data), drop = FALSE]
+    } else {
+      dl <- d
     }
     d.order <- dl
     d.order[dl == 1] <- 0
     d.order[dl == 0] <- 1
-    dl <- dl[order(rowSums(d.order, na.rm = TRUE), decreasing = FALSE), ]
+    dl <- dl[order(rowSums(d.order, na.rm = TRUE), decreasing = FALSE), , drop = FALSE]
     resmatrix <- t(resmatrix)
     mcols(x.f)$name <- cell.sample[1, "SAMPLE"]
     lc <- lc + 1
@@ -393,7 +461,10 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
       segments <- data.frame(state = flookup(resmatrix, dl)[, 1], median = NA, mean = NA, max = NA, stringsAsFactors = FALSE)
       score.features <- unique(segments$state)[(unique(segments$state) %in% rownames(score.cells))]
       for (score.feature in score.features) {
-        feature.scores <- scorematrix[segments$state == score.feature, score.cells[rownames(score.cells) %in% score.feature, "col"]]
+        scorematrix.rows <- segments$state == score.feature
+        feature.scores <- scorematrix[segments$state == score.feature,
+                                      score.cells[rownames(score.cells) %in% score.feature, "col"],
+                                      drop = FALSE]
         feature.scores.df <- data.frame(median = numeric(), mean = numeric(), max = numeric())
         if (is(feature.scores, "matrix")) {
           feature.scores.df <- rbind.data.frame(feature.scores.df, data.frame(median = rowMedians(feature.scores), mean = rowMeans(feature.scores), max = rowMaxs(feature.scores)))
@@ -402,7 +473,6 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
         }
         segments[segments$state == score.feature, c("median", "mean", "max")] <- feature.scores.df
       }
-      # feature.score.bm2 <<- feature.score.tmp1
       mcols(x.f)$state <- segments$state
       mcols(x.f)[, c("median", "mean", "max")] <- DataFrame(segments[, c("median", "mean", "max")])
     } else {
@@ -426,12 +496,11 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
 
         mcols(x.f.ll[[state.name]])[, c("median", "mean", "max")] <- lapply(my.scores, function(x) {
           if(max(x) > 0) {
-            (x/max(x)) * 1000
+            ceiling((x/max(x)) * 1000)
           } else {
             0
           }
         })
-
       }
       x.f.l <- x.f.ll
     } else {
@@ -451,9 +520,17 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
     output <- GRangesList(output)
   }
   if (progress) close(pb)
-  names(output) <- names(samples)
+
+  skipped <- unlist(skipped)
+  if (is.null(skipped)) {
+    names(output) <- names(samples)
+  } else {
+    names(output) <- names(samples)[-skipped]
+  }
+
   attributes(output)$manifest <- samples
   done.time <- Sys.time() - start.time
   if (progress) message("processed ", length(samples), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
   return(output)
 }
+
