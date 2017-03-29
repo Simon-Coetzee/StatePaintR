@@ -251,8 +251,8 @@ reverse_tl <- function(tl) {
   return(as.list(values))
 }
 
-#' @importFrom jsonlite toJSON fromJSON
-ExportStateHub <- function(states, decisionMatrix, output.dir) {
+#' @importFrom jsonlite toJSON fromJSON unbox
+ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
   if (missing(output.dir)) { stop("please indicate output directory") }
   if (missing(decisionMatrix)) { stop("please include decisionMatrix") }
   if (!dir.exists(output.dir)) { dir.create(output.dir) }
@@ -290,11 +290,16 @@ ExportStateHub <- function(states, decisionMatrix, output.dir) {
   df$baseURL <- "http://s3-us-west-2.amazonaws.com/statehub-trackhub/tracks/"
   df$order <- 0
   row.names(df) <- NULL
-  jlist <- list(modelID = decisionMatrix@id,
-                tracks = df)
-  df.json <- toJSON(jlist, pretty = TRUE)
-  writeLines(df.json, con = file.path(output.dir, "manifest.json"))
-  return(invisible(jlist))
+  if (as == "json") {
+    jlist <- list(modelID = unbox(decisionMatrix@id),
+                  tracks = df)
+    df.json <- toJSON(jlist, pretty = TRUE)
+    writeLines(df.json, con = file.path(output.dir, "manifest.json"))
+    return(invisible(jlist))
+  } else if (as == "autosql") {
+	  for () {
+	  }
+  }
 }
 
 setMethod("show",
