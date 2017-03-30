@@ -250,7 +250,7 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
   rgb.color <- apply(X = col2rgb(mcols(x)$itemRgb),
                      MARGIN = 2,
                      FUN = function(x) {
-                       paste(as.character(x), collapse = ",")})
+                       paste(x, collapse = ",")})
   x.df <- data.frame(chr = seqnames(x),
                      start = start(x),
                      end = end(x),
@@ -260,12 +260,12 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
                      bstart = start(x),
                      bend = end(x),
                      color = rgb.color)
-  data.table::fwrite(x.df, file = file,
-                     append = TRUE,
-                     sep = "\t",
-                     col.names = FALSE,
-                     quote = FALSE,
-                     showProgress = FALSE)
+  fwrite(x.df, file = file,
+         append = TRUE,
+         sep = "\t",
+         col.names = FALSE,
+         quote = FALSE,
+         showProgress = FALSE)
   #rtracklayer::export.bed(x, file,
   #                        trackLine = my.track)
 }
