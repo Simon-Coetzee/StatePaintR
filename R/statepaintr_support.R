@@ -201,6 +201,9 @@ make.overlap.matrix <- function(query.over, subject.over, samples) {
 }
 
 #' @importFrom utils packageVersion
+#' @importFrom GenomeInfoDb seqnames
+#' @importFrom BiocGenerics start end
+#' @importFrom data.table fwrite
 write.state <- function(x, y, color, hub.id, file = stdout()) {
   manifest <- y
   meta <- list(software = "StatePaintR",
@@ -222,12 +225,12 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
   } else {
     stop("non default column names in input data, meta data may be name and sample")
   }
-  file <- file(file, "w+")
-  writeLines(paste("# this file was produced by", meta$software), file)
-  writeLines(paste("# version number:", meta$version), file)
-  writeLines(paste("# StateHub Model ID:", hub.id), file)
-  writeLines("# it is the chromatin segmentation of the following files: ", file)
-  writeLines(meta$files, file)
+  file.con <- file(file, "w+")
+  writeLines(paste("# this file was produced by", meta$software), file.con)
+  writeLines(paste("# version number:", meta$version), file.con)
+  writeLines(paste("# StateHub Model ID:", hub.id), file.con)
+  writeLines("# it is the chromatin segmentation of the following files: ", file.con)
+  writeLines(meta$files, file.con)
   if (!is.null(color)) {
     my.track <- new("BasicTrackLine",
                     itemRgb = TRUE,
@@ -242,9 +245,26 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
                     description = paste0("StatePaintR Segmentation for ",
                                          manifest$SAMPLE[[1]]))
   }
-  rtracklayer::export.bed(x, file,
-                          trackLine = my.track)
-  close(file)
+  writeLines(as(my.track, "character"), file.con)
+  close(file.con)
+  x.df <- data.frame(chr = seqnames(x),
+                     start = start(x),
+                     end = end(x),
+                     name = mcols(x)$name,
+                     score = mcols(x)$score,
+                     strand = ".",
+                     bstart = start(x),
+                     bend = end(x),
+                     color = paste(as.character(col2rgb(mcols(x)$itemRgb)),
+                                   collapse = ","))
+  data.table::fwrite(x.df, file = file,
+                     append = TRUE,
+                     sep = "\t",
+                     col.names = FALSE,
+                     quote = FALSE,
+                     showProgress = FALSE)
+  #rtracklayer::export.bed(x, file,
+  #                        trackLine = my.track)
 }
 
 reverse_tl <- function(tl) {
