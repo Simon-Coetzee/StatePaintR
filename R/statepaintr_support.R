@@ -247,6 +247,12 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
   }
   writeLines(as(my.track, "character"), file.con)
   close(file.con)
+
+  rgb.color <- apply(X = col2rgb(mcols(x)$itemRgb),
+                     MARGIN = 2,
+                     FUN = function(x) {
+                       paste(as.character(x), collapse = ",")})
+
   x.df <- data.frame(chr = seqnames(x),
                      start = start(x),
                      end = end(x),
@@ -255,8 +261,7 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
                      strand = ".",
                      bstart = start(x),
                      bend = end(x),
-                     color = paste(as.character(col2rgb(mcols(x)$itemRgb)),
-                                   collapse = ","))
+                     color = rgb.color)
   data.table::fwrite(x.df, file = file,
                      append = TRUE,
                      sep = "\t",
@@ -337,7 +342,7 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
 	    writeLines(paste("char[1]", "strand;", '"+ or - for strand . for unstranded"', sep = "\t"), con = outfile)
 	    writeLines(paste("uint", "thickStart;", '"starting position at which the feature is drawn thickly"', sep = "\t"), con = outfile)
 	    writeLines(paste("uint", "thickEnd;", '"ending position at which the feature is drawn thickly"', sep = "\t"), con = outfile)
-	    writeLines(paste("uint", "itemRgb;", '"Color of Segment coded to Label"', sep = "\t"), con = outfile)
+	    writeLines(paste("uint", "reserved;", '"Color of Segment coded to Label"', sep = "\t"), con = outfile)
 	    writeLines(")", con = outfile)
 	    close(outfile)
 	  }
