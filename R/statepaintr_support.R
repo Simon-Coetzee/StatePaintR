@@ -247,12 +247,10 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
   }
   writeLines(as(my.track, "character"), file.con)
   close(file.con)
-
   rgb.color <- apply(X = col2rgb(mcols(x)$itemRgb),
                      MARGIN = 2,
                      FUN = function(x) {
                        paste(as.character(x), collapse = ",")})
-
   x.df <- data.frame(chr = seqnames(x),
                      start = start(x),
                      end = end(x),
@@ -329,6 +327,7 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
 	  for (sample.i in 1:nrow(df)) {
 	    df.i <- df[sample.i, ]
 	    sample.name <- df.i[, "name"]
+	    sample.name <- str_replace_all(sample.name, pattern = "/", replacement = "-")
 	    sample.name <- str_replace_all(sample.name, pattern = " ", replacement = "_")
 	    outfile <- file(file.path(output.dir, paste0(sample.name, ".manifest.as")), open = "w+")
 	    writeLines(paste("table", sample.name), con = outfile)
