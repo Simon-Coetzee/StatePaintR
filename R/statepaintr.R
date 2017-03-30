@@ -310,6 +310,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 #'
 #' @importFrom rtracklayer export.bed
 #' @importFrom dplyr left_join
+#' @importFrom stringr str_replace_all
 #' @return Invisibly returns the states object.
 #' @export
 #' @examples
@@ -328,7 +329,8 @@ ExportStatePaintR <- function(states, decisionMatrix, output.dir, progress = TRU
   if (progress) pb <- txtProgressBar(min = 0, max = length(states), style = 3)
   for (state in seq_along(states)) {
     if (progress) setTxtProgressBar(pb, state)
-    s.name <- str_replace(names(m.data)[state], "/", "-")
+    s.name <- str_replace_all(names(m.data)[state], "/", "-")
+    s.name <- str_replace_all(s.name, " ", "_")
     s.m.data <- m.data[[state]]
     state <- states[[state]]
     write.state(state, s.m.data, color.key, hub.id,

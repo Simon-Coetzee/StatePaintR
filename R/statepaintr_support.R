@@ -263,7 +263,7 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
   if(inherits(states, "GRangesList")) {
     m.data <- attributes(states)$manifest
   } else {
-    m.data <- parse.manifest(states)
+    m.data <- parse.manifest(states, check = FALSE)
   }
   decisionMatrix@abstraction.layer <- lapply(abstractionLayer(decisionMatrix), tolower)
   m.data <- lapply(m.data, function(manifest, dm = decisionMatrix) {
@@ -285,7 +285,7 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
                    "statePaintRVersion" = NA,
                    "modelID" = NA,
                    baseURL = NA,
-                   Order = NA,
+                   order = NA,
                    check.names = FALSE,
                    stringsAsFactors = FALSE)
   df$marks <- sapply(m.data, function(x) {x[, "MARK"]})
@@ -301,8 +301,29 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
     writeLines(df.json, con = file.path(output.dir, "manifest.json"))
     return(invisible(jlist))
   } else if (as == "autosql") {
-	  for () {
+	  for (sample.i in 1:nrow(df)) {
+	    df.i <- df[sample.i, ]
+	    sample.name <- df.i[, "name"]
+	    sample.name <- str_replace_all(sample.name, pattern = " ", replacement = "_")
+	    outfile <- file(file.path(output.dir, paste0(sample.name, ".manifest.as")), open = "w+")
+	    writeLines(paste("table", sample.name), con = outfile)
+	    writeLines(paste0('"', df.i[, "description"], '"'), con = outfile)
+	    writeLines("(", con = outfile)
+	    writeLines(paste("string", "chrom;", '"Reference sequence chromosome or scaffold"', sep = "\t"), con = outfile)
+	    writeLines(paste("uint", "chromStart;", '"Start position of feature on chromosome"', sep = "\t"), con = outfile)
+	    writeLines(paste("uint", "chromEnd;", '"End position of feature on chromosome"', sep = "\t"), con = outfile)
+	    writeLines(paste("string", "name;", '"Label of Segment"', sep = "\t"), con = outfile)
+	    writeLines(paste("uint", "score;", '"Score"', sep = "\t"), con = outfile)
+	    writeLines(paste("char[1]", "strand;", '"+ or - for strand . for unstranded"', sep = "\t"), con = outfile)
+	    writeLines(paste("uint", "thickStart;", '"starting position at which the feature is drawn thickly"', sep = "\t"), con = outfile)
+	    writeLines(paste("uint", "thickEnd;", '"ending position at which the feature is drawn thickly"', sep = "\t"), con = outfile)
+	    writeLines(paste("uint", "itemRgb;", '"Color of Segment coded to Label"', sep = "\t"), con = outfile)
+	    writeLines(")", con = outfile)
+	    close(outfile)
 	  }
+    return(invisible(df))
+  } else {
+    stop("argument 'as' must be either 'autosql' or 'json'")
   }
 }
 
