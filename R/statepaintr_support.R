@@ -247,6 +247,7 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
   }
   writeLines(as(my.track, "character"), file.con)
   close(file.con)
+  browser()
   x.df <- data.frame(chr = seqnames(x),
                      start = start(x),
                      end = end(x),
@@ -324,6 +325,7 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
 	  for (sample.i in 1:nrow(df)) {
 	    df.i <- df[sample.i, ]
 	    sample.name <- df.i[, "name"]
+	    sample.name <- str_replace_all(sample.name, pattern = "/", replacement = "-")
 	    sample.name <- str_replace_all(sample.name, pattern = " ", replacement = "_")
 	    outfile <- file(file.path(output.dir, paste0(sample.name, ".manifest.as")), open = "w+")
 	    writeLines(paste("table", sample.name), con = outfile)
@@ -337,7 +339,7 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
 	    writeLines(paste("char[1]", "strand;", '"+ or - for strand . for unstranded"', sep = "\t"), con = outfile)
 	    writeLines(paste("uint", "thickStart;", '"starting position at which the feature is drawn thickly"', sep = "\t"), con = outfile)
 	    writeLines(paste("uint", "thickEnd;", '"ending position at which the feature is drawn thickly"', sep = "\t"), con = outfile)
-	    writeLines(paste("uint", "itemRgb;", '"Color of Segment coded to Label"', sep = "\t"), con = outfile)
+	    writeLines(paste("uint", "reserved;", '"Color of Segment coded to Label"', sep = "\t"), con = outfile)
 	    writeLines(")", con = outfile)
 	    close(outfile)
 	  }
