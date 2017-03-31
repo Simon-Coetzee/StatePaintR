@@ -204,6 +204,8 @@ make.overlap.matrix <- function(query.over, subject.over, samples) {
 #' @importFrom GenomeInfoDb seqnames
 #' @importFrom BiocGenerics start end
 #' @importFrom data.table fwrite
+#' @importFrom dplyr data_frame everything
+#' @importFrom tidyr unite
 write.state <- function(x, y, color, hub.id, file = stdout()) {
   manifest <- y
   meta <- list(software = "StatePaintR",
@@ -247,10 +249,13 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
   }
   writeLines(as(my.track, "character"), file.con)
   close(file.con)
-  rgb.color <- apply(X = col2rgb(mcols(x)$itemRgb),
-                     MARGIN = 2,
-                     FUN = function(x) {
-                       paste(x, collapse = ",")})
+  rgb.color <- col2rgb(mcols(x)$itemRgb)
+  rgb.color <- unite(data_frame(r = rgb.color[1, ],
+                                g = rgb.color[2, ],
+                                b = rgb.color[3, ]),
+                     col = color,
+                     everything(),
+                     sep = ",")
   x.df <- data.frame(chr = seqnames(x),
                      start = start(x),
                      end = end(x),
@@ -259,15 +264,13 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
                      strand = ".",
                      bstart = start(x),
                      bend = end(x),
-                     color = rgb.color)
+                     color = rgb.color$color)
   fwrite(x.df, file = file,
          append = TRUE,
          sep = "\t",
          col.names = FALSE,
          quote = FALSE,
          showProgress = FALSE)
-  #rtracklayer::export.bed(x, file,
-  #                        trackLine = my.track)
 }
 
 reverse_tl <- function(tl) {

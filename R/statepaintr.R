@@ -308,9 +308,9 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 #' The directory will be created if it does not exist.
 #' @param progress logical; show progress bar and timing details?
 #'
-#' @importFrom rtracklayer export.bed
 #' @importFrom dplyr left_join
 #' @importFrom stringr str_replace_all
+#' @importClassesFrom rtracklayer BasicTrackLine
 #' @return Invisibly returns the states object.
 #' @export
 #' @examples
@@ -320,6 +320,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 #'                   output.dir = tempdir())
 #' }
 ExportStatePaintR <- function(states, decisionMatrix, output.dir, progress = TRUE) {
+  start.time <- Sys.time()
   if (missing(output.dir)) { stop("please indicate output directory") }
   if (missing(decisionMatrix)) { stop("please include decisionMatrix") }
   if (!dir.exists(output.dir)) { dir.create(output.dir) }
@@ -338,6 +339,8 @@ ExportStatePaintR <- function(states, decisionMatrix, output.dir, progress = TRU
                           paste0(s.name, ".", nrow(s.m.data), "mark.segmentation.bed")))
   }
   if (progress) close(pb)
+  done.time <- Sys.time() - start.time
+  if (progress) message("processed ", length(states), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
   message("segmentation files written to: ", output.dir)
   return(invisible(states))
 }
