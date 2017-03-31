@@ -325,6 +325,16 @@ ExportStatePaintR <- function(states, decisionMatrix, output.dir, progress = TRU
   if (missing(decisionMatrix)) { stop("please include decisionMatrix") }
   if (!dir.exists(output.dir)) { dir.create(output.dir) }
   m.data <- attributes(states)$manifest
+  decisionMatrix@abstraction.layer <- lapply(abstractionLayer(decisionMatrix), tolower)
+  m.data <- lapply(m.data, function(manifest, dm = decisionMatrix) {
+    manifest <- manifest[tolower(manifest$MARK) %in% unlist(abstractionLayer(dm), use.names = FALSE), , drop = FALSE]
+    if(nrow(manifest) < 1) {
+      return(NULL)
+    } else {
+      return(manifest)
+    }
+  })
+  m.data <- m.data[!sapply(m.data, is.null)]
   color.key <- stateColors(decisionMatrix)
   hub.id <- decisionMatrix@id
   if (progress) pb <- txtProgressBar(min = 0, max = length(states), style = 3)
