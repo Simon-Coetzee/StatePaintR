@@ -292,6 +292,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     names(output) <- names(samples)
   } else {
     names(output) <- names(samples)[-skipped]
+    samples <- samples[-skipped]
   }
 
   attributes(output)$manifest <- samples

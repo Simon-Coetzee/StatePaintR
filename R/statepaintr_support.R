@@ -257,12 +257,12 @@ write.state <- function(x, y, color, hub.id, file = stdout()) {
                      everything(),
                      sep = ",")
   x.df <- data.frame(chr = seqnames(x),
-                     start = start(x),
+                     start = start(x) - 1L,
                      end = end(x),
                      name = mcols(x)$name,
                      score = mcols(x)$score,
                      strand = ".",
-                     bstart = start(x),
+                     bstart = start(x) - 1L,
                      bend = end(x),
                      color = rgb.color$color)
   fwrite(x.df, file = file,
@@ -282,11 +282,11 @@ reverse_tl <- function(tl) {
 }
 
 #' @importFrom jsonlite toJSON fromJSON unbox
-ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
+ExportStateHub <- function(states, decisionMatrix, output.dir, description = NULL, as = "json") {
   if (missing(output.dir)) { stop("please indicate output directory") }
   if (missing(decisionMatrix)) { stop("please include decisionMatrix") }
   if (!dir.exists(output.dir)) { dir.create(output.dir) }
-  if(inherits(states, "GRangesList")) {
+  if (inherits(states, "GRangesList")) {
     m.data <- attributes(states)$manifest
   } else {
     m.data <- parse.manifest(states, check = FALSE)
@@ -294,20 +294,37 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
   decisionMatrix@abstraction.layer <- lapply(abstractionLayer(decisionMatrix), tolower)
   m.data <- lapply(m.data, function(manifest, dm = decisionMatrix) {
     manifest <- manifest[tolower(manifest$MARK) %in% unlist(abstractionLayer(dm), use.names = FALSE), , drop = FALSE]
-    if(nrow(manifest) < 1) {
+    if (nrow(manifest) < 1) {
       return(NULL)
     } else {
       return(manifest)
     }
   })
+
   m.data <- m.data[!sapply(m.data, is.null)]
-  df <- data.frame(name = names(m.data),
-                   description = names(m.data),
+  if (is.null(description)) {
+    sample.description <- data.frame(names = names(m.data), cell_type = names(m.data), stringsAsFactors = FALSE)
+  } else {
+    ### DESCRIPTION file requires the columns "cell_type" and "sample_id" where sample_id
+    ### is the same as the "name" of the m.data objects
+    sample.description <- data.frame(names = names(m.data), stringsAsFactors = FALSE)
+    description <- read.delim(description)
+    if (all(c("cell_type", "sample_id") %in% colnames(description))) {
+      description <- description[, c("cell_type", "sample_id")]
+      description$sample_id <- tolower(description$sample_id)
+      description <- unique(description)
+      sample.description <- left_join(sample.description, description, by = c("names" = "sample_id"))
+    } else {
+      stop("DESCRIPTION file requires the columns 'cell_type' and 'sample_id'")
+    }
+  }
+  df <- data.frame(name = sample.description$names,
+                   description = sample.description$cell_type,
                    project = sapply(m.data, function(x) {x[1, "SRC"]}),
                    genome = sapply(m.data, function(x) {x[1, "BUILD"]}),
                    marks = NA,
-                   bedFileName = paste0(names(m.data), ".", sapply(m.data, length), "mark.segmentation.bed"),
-                   bigBedFileName = paste0(names(m.data), ".", sapply(m.data, length), "mark.segmentation.bb"),
+                   bedFileName = paste0(names(m.data), ".", sapply(m.data, nrow), "mark.segmentation.bed"),
+                   bigBedFileName = paste0(names(m.data), ".", sapply(m.data, nrow), "mark.segmentation.bb"),
                    "statePaintRVersion" = NA,
                    "modelID" = NA,
                    baseURL = NA,
@@ -317,8 +334,15 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
   df$marks <- sapply(m.data, function(x) {x[, "MARK"]})
   df$statePaintRVersion <- as.character(packageVersion("StatePaintR"))
   df$modelID <- decisionMatrix@id
-  df$baseURL <- "http://s3-us-west-2.amazonaws.com/statehub-trackhub/tracks/"
+  df$baseURL <- "http://s3-us-west-2.amazonaws.com/statehub-trackhub/tracks"
   df$order <- 0
+  df$name <- str_replace_all(df$name, pattern = "/", replacement = "-")
+  df$name <- str_replace_all(df$name, pattern = " ", replacement = "_")
+  df$bedFileName <- str_replace_all(df$bedFileName, pattern = "/", replacement = "-")
+  df$bedFileName <- str_replace_all(df$bedFileName, pattern = " ", replacement = "_")
+  df$bigBedFileName <- str_replace_all(df$bigBedFileName, pattern = "/", replacement = "-")
+  df$bigBedFileName <- str_replace_all(df$bigBedFileName, pattern = " ", replacement = "_")
+
   row.names(df) <- NULL
   if (as == "json") {
     jlist <- list(modelID = unbox(decisionMatrix@id),
@@ -330,10 +354,8 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, as = "json") {
 	  for (sample.i in 1:nrow(df)) {
 	    df.i <- df[sample.i, ]
 	    sample.name <- df.i[, "name"]
-	    sample.name <- str_replace_all(sample.name, pattern = "/", replacement = "-")
-	    sample.name <- str_replace_all(sample.name, pattern = " ", replacement = "_")
 	    outfile <- file(file.path(output.dir, paste0(sample.name, ".manifest.as")), open = "w+")
-	    writeLines(paste("table", sample.name), con = outfile)
+	    writeLines(paste0('table', ' "', sample.name, '"'), con = outfile)
 	    writeLines(paste0('"', df.i[, "description"], '"'), con = outfile)
 	    writeLines("(", con = outfile)
 	    writeLines(paste("string", "chrom;", '"Reference sequence chromosome or scaffold"', sep = "\t"), con = outfile)
@@ -408,7 +430,7 @@ PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, 
     if (progress) setTxtProgressBar(pb, lc)
     skipname <- cell.sample
     cell.sample <- samples[[cell.sample]]
-    x <- GetBioFeatures(manifest = cell.sample, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
+    x <- GetBioFeatures(manifest = cell.sample, dm = decisionMatrix, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
     names(x) <- tolower(names(x))
     inputset <- names(x)
     inputset <- sapply(inputset, function(x, y = deflookup) {
