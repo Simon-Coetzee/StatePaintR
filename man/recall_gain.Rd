@@ -24,13 +24,3 @@ This function calculates Recall Gain from the entries of the contingency table: 
 \details{
 Recall Gain (RecGain) quantifies by how much recall is improved over the recall equal to the proportion of positives (pi). RecGain=1 stands for maximal improvement (Rec=1) and RecGain=0 stands for no improvement (Rec=pi). If Rec=0, then RecGain=-Inf. It can happen that RecGain=NaN, for instance if there are no negatives (FP=0 and TN=0) and FN>0 and TP=0.
 }
-\examples{
-recall_gain(3,0,1,2)
-# [1] 1
-TP = c(0,2,3)
-FN = 3-TP
-FP = c(0,1,2)
-TN = 2-FP
-recall_gain(TP,FN,FP,TN)
-# [1]  -Inf 0.25 1.00
-}

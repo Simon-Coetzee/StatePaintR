@@ -24,13 +24,3 @@ This function calculates Precision Gain from the entries of the contingency tabl
 \details{
 Precision Gain (PrecGain) quantifies by how much precision is improved over the default precision of the always positive predictor, equal to the proportion of positives (pi). PrecGain=1 stands for maximal improvement (Prec=1) and PrecGain=0 stands for no improvement (Prec=pi). If Prec=0, then PrecGain=-Inf. It can happen that PrecGain=NaN, for instance if there are no positives (TP=0 and FN=0) and TN>0.
 }
-\examples{
-precision_gain(3,0,1,2)
-# [1] 0.6666667
-TP = c(0,2,3)
-FN = 3-TP
-FP = c(0,1,2)
-TN = 2-FP
-precision_gain(TP,FN,FP,TN)
-# [1]  NaN 0.25 0.00
-}

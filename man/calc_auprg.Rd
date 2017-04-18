@@ -18,7 +18,3 @@ This function calculates the area under the Precision-Recall-Gain curve from the
 \details{
 This function calculates the area under the Precision-Recall-Gain curve, taking into account only the part of the curve with non-negative recall gain. The regions with negative precision gain (PRG-curve under the x-axis) contribute as negative area.
 }
-\examples{
-calc_auprg(create_prg_curve(c(1,1,0,0,1,0),c(0.8,0.8,0.6,0.4,0.4,0.2)))
-# [1] 0.7083333
-}

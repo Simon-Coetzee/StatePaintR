@@ -15,8 +15,3 @@ the data.frame representing the convex hull
 \description{
 This function creates the convex hull of the Precision-Recall-Gain curve resulting from the function create_prg_curve and calculates the F-calibrated scores. More information on Precision-Recall-Gain curves and how to cite this work is available at http://www.cs.bris.ac.uk/~flach/PRGcurves/.
 }
-\examples{
-labels = c(1,1,1,0,1,1,1,1,1,1,0,1,1,1,0,1,0,0,1,0,0,0,1,0,1)
-scores = (25:1)/25
-prg_convex_hull(create_prg_curve(labels,scores))
-}

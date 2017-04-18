@@ -26,7 +26,8 @@ Imports:
     utils,
     BiocGenerics,
     Matrix,
-    tidyr
+    tidyr,
+    grDevices
 Suggests: knitr,
     rmarkdown,
     biomaRt,

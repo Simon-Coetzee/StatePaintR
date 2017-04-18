@@ -207,6 +207,7 @@ make.overlap.matrix <- function(query.over, subject.over, samples) {
 #' @importFrom data.table fwrite
 #' @importFrom dplyr data_frame everything
 #' @importFrom tidyr unite
+#' @importFrom grDevices col2rgb
 write.state <- function(x, y, color, hub.id, file = stdout()) {
   manifest <- y
   meta <- list(software = "StatePaintR",
@@ -283,6 +284,7 @@ reverse_tl <- function(tl) {
 }
 
 #' @importFrom jsonlite toJSON fromJSON unbox
+#' @importFrom utils read.delim
 ExportStateHub <- function(states, decisionMatrix, output.dir, description = NULL, as = "json") {
   if (missing(output.dir)) { stop("please indicate output directory") }
   if (missing(decisionMatrix)) { stop("please include decisionMatrix") }
