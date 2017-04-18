@@ -73,11 +73,38 @@ With This complete, we begin analysis.
 The process of running StatePaintR falls into three basic steps.
 ## Download the decision matrix
 We first download the decision matrix by indicating the model's unique ID as indicated on the statehub website.
-```{r, eval = FALSE}
-decisionmatrix <- get.decision.matrix(search = "5813b67f46e0fb06b493ceb0")
-```
 ```{r}
+decisionmatrix <- get.decision.matrix(search = "5813b67f46e0fb06b493ceb0")
+decisionmatrix
 ```
+
+## Generate a Manifest 
+We need a manifest indicating the data that we want to segment
+```{r}
+manifest <- "data/manifest.hmec.txt"
+read.table(manifest,
+           sep = "\t",
+           stringsAsFactors = FALSE,
+           header = TRUE)
+```
+
+## Segment the Genome
+Using the manifest, and the decision matrix we aquired above, we can segment the genome
+```{r}
+hmec.states <- PaintStates(manifest = "data/manifest.hmec.txt",
+                           decisionMatrix = decisionmatrix,
+                           progress = FALSE)
+hmec.states
+```
+
+## Export the segments
+Once we have generated the segmentations, we can write them to disk as a bed file for viewing in a genome browser, or for additional analysis outside of R
+```{r, eval = FALSE}
+ExportStatePaintR(states = hmec.states,
+                  decisionMatrix = dm,
+                  output.dir = "data/HMEC/")
+```
+
 # Table 2 - Performance of enhancer predictions
 ## VISTA validated enhancers
 In order to determine a basis for true positive enhancers we use enhancers validated by the [VISTA enhancer browser](https://enhancer.lbl.gov/).
@@ -86,6 +113,7 @@ We can begin by reading the VISTA data from a bed file. The original data comes 
 vista.enhancers <- read_tsv("data/VISTA_invivo_tested.bed", col_names = FALSE)
 vista.enhancers
 ```
+
 This gives us the genomic locations of vista enhancers, in columns 1:3; then the name of the enhancer in 4. Column 5 is True - `1` or False `0` indicating if the enhancer was found to have activity. Columns 7 and 8 are redundant with 2 and 3, column 9 assigns a color based upon column 5. Column 10 indicates the tissues wherein the activity of the enhancer was observed. Since this is a little bit messy, we clean up the format, and covert it to a `GenomicRanges` object for further analysis.
 
 ```{r}
@@ -156,18 +184,21 @@ head(read.table(manifest,
                 stringsAsFactors = FALSE,
                 header = TRUE))
 ```
+
 ## Aquiring a StateHub model
 We can begin our enhancer predictions by segmenting the genome for these samples. We have our manifest, now all we need is a `decisionMatrix` from StateHub to define the rules for segmenting the genome.
 ```{r}
 dm <- get.decision.matrix("5813b67f46e0fb06b493ceb0")
 dm
 ```
+
 Our decision matrix is downloaded, but in order to score our enhancers we make some modifications. We want to exclude the "Regulatory" mark from our scoring process, and we want keep DNase-seq peaks intact as the core of our features.
 ```{r}
 dm <- doNotScore(dm, "Regulatory")
 dm <- doNotSplit(dm, "Core")
 dm
 ```
+
 ## Running StatePaintR to get enhancer predictions and scores
 With preparation complete, we can now segment the genome for our samples defined in the manifest.
 ```{r}
@@ -182,6 +213,7 @@ mouse.embryo.states$heart
 ## Comparing Predictions to VISTA {#train_subset}
 
 All of our model tuning was done on a selection of 100 valid enhancers for each tissue type, so we'll exclude those 100 from our subsequent comparisons.
+
 ```{r}
 seed <- 42
 train.enhancers <- list()
@@ -201,6 +233,7 @@ Evaluation of our models, and the external enhancer predictions against which we
 
 ### StatePaintR Predictions
 Here we generate the StatePaintR predictions, using the states *EAR*, *EARC*, *AR*, and *ARC* as our predicted enhancers.
+
 ```{r}
 plot.data.sp <- list()
 for (tissue in names(mouse.embryo.states)) {
@@ -221,6 +254,7 @@ for (tissue in names(mouse.embryo.states)) {
   plot.data.sp <- c(plot.data.sp, plot.tissue)
 }
 ```
+
 We can prepare the data for plotting in ggplot2 by extracting the precision gain and recall gain, and the convex hull. We can also take a look at the area under the precision recall gain curve to get an idea of the accuracy.
 ```{r}
 sp.precision.recall.gain <- lapply(plot.data.sp, function(x) {
@@ -278,6 +312,7 @@ encode.enhancers <- lapply(encode.enhancers, function(x) {
 })
 encode.enhancers$heart
 ```
+
 As before we compare this data to the VISTA dataset.
 ```{r}
 plot.data.encode <- list()
@@ -298,6 +333,7 @@ for (tissue in names(encode.enhancers)) {
   plot.data.encode <- c(plot.data.encode, plot.tissue)
 }
 ```
+
 Again we extract data for plotting, and take a look at AUPRG.
 ```{r}
 encode.precision.recall.gain <- lapply(plot.data.encode, function(x) {
@@ -319,6 +355,7 @@ encode.convex.hull <- do.call("rbind", encode.convex.hull)
 
 sapply(plot.data.encode, function(x) x$auprg)
 ```
+
 Continue in this pattern for the remaining enhancer predictions.
 
 ### REPTILE Enhancer Predictions
@@ -344,6 +381,7 @@ reptile.enhancers <- lapply(reptile.enhancers, function(x) {
 })
 reptile.enhancers$heart
 ```
+
 ```{r}
 plot.data.reptile <- list()
 for (tissue in names(reptile.enhancers)) {
@@ -363,6 +401,7 @@ for (tissue in names(reptile.enhancers)) {
   plot.data.reptile <- c(plot.data.reptile, plot.tissue)
 }
 ```
+
 ```{r}
 reptile.precision.recall.gain <- lapply(plot.data.reptile, function(x) {
   x <- data.frame(TISSUE = x$tissue,
@@ -406,6 +445,7 @@ delta.enhancers <- lapply(delta.enhancers, function(x) {
 })
 delta.enhancers$heart
 ```
+
 ```{r}
 plot.data.delta <- list()
 for (tissue in names(delta.enhancers)) {
@@ -425,6 +465,7 @@ for (tissue in names(delta.enhancers)) {
   plot.data.delta <- c(plot.data.delta, plot.tissue)
 }
 ```
+
 ```{r}
 delta.precision.recall.gain <- lapply(plot.data.delta, function(x) {
   x <- data.frame(TISSUE = x$tissue, 
@@ -445,6 +486,7 @@ delta.convex.hull <- do.call("rbind", delta.convex.hull)
 
 sapply(plot.data.delta, function(x) x$auprg)
 ```
+
 ### RFECS Enhancer Predictions
 
 RFECS (Random Forest based Enhancer identification from Chromatin States) is described in *[RFECS: A Random-Forest Based Algorithm for Enhancer Identification from Chromatin State](http://dx.doi.org/10.1371%2Fjournal.pcbi.1002968)* and is used to predict genome-wide enhancers based on their similarity to the histone modification profiles of p300 binding sites.
@@ -468,6 +510,7 @@ rfecs.enhancers <- lapply(rfecs.enhancers, function(x) {
 })
 rfecs.enhancers$heart
 ```
+
 ```{r}
 plot.data.rfecs <- list()
 for (tissue in names(rfecs.enhancers)) {
@@ -487,6 +530,7 @@ for (tissue in names(rfecs.enhancers)) {
   plot.data.rfecs <- c(plot.data.rfecs, plot.tissue)
 }
 ```
+
 ```{r}
 rfecs.precision.recall.gain <- lapply(plot.data.rfecs, function(x) {
   x <- data.frame(TISSUE = x$tissue, 
@@ -507,6 +551,7 @@ rfecs.convex.hull <- do.call("rbind", rfecs.convex.hull)
 
 sapply(plot.data.rfecs, function(x) x$auprg)
 ```
+
 ### CSI-ANN Enhancer Predictions
 
 CSI-ANN (chromatin signature identification by artificial neural network) is described in *[Discover regulatory DNA elements using chromatin signatures and artificial neural network](http://dx.doi.org/10.1093/bioinformatics/btq248)* and is a framework that consists of a data transformation and a feature extraction step followed by a classification step using time-delay neural network.
@@ -530,6 +575,7 @@ csiann.enhancers <- lapply(csiann.enhancers, function(x) {
 })
 csiann.enhancers$heart
 ```
+
 ```{r}
 plot.data.csiann <- list()
 for (tissue in names(csiann.enhancers)) {
@@ -549,6 +595,7 @@ for (tissue in names(csiann.enhancers)) {
   plot.data.csiann <- c(plot.data.csiann, plot.tissue)
 }
 ```
+
 ```{r}
 csiann.precision.recall.gain <- lapply(plot.data.csiann, function(x) {
   x <- data.frame(TISSUE = x$tissue, 
@@ -569,6 +616,7 @@ csiann.convex.hull <- do.call("rbind", csiann.convex.hull)
 
 sapply(plot.data.csiann, function(x) x$auprg)
 ```
+
 ### EnhancerFinder enhancer predictions
 Another system of enhancer prediction that we may compare against is [EnhancerFinder](http://dx.doi.org/10.1371/journal.pcbi.1003677), a two-step method for distinguishing developmental enhancers from the genomic background and then predicting their tissue specificity. Among the Supporting Information for the paper are the enhancer predictions made for *brain*, *limb*, and *heart*. These however are indicated in hg19 genomic coordinates, so we will have to get the hg19 coordinates for the VISTA database as well.
 ```{r, message = FALSE}
@@ -602,6 +650,7 @@ vista.human <- GRanges(seqnames = vista.human$X1,
 mcols(vista.human) <- cbind(as.data.frame(mcols(vista.human)), vista.human.matrix)
 vista.human[, 1:4]
 ```
+
 The enhancer predictions that EnhancerFinder generates only has a single category for *brain* so we will compare it to both *hindbrain* and *midbrain*, they also made no predictions for neural tube, so we will be excluding EnhancerFinder from that prediction. Beyond that, the procedure is similar to what we did for ENCODE. Starting with creating a GRanges object for the predictions
 ```{r}
 download.file("http://dx.doi.org/10.1371/journal.pcbi.1003677.s018", destfile = "data/enhancerfinder.predictions.zip")
@@ -619,6 +668,7 @@ enhancerfinder.enhancers <- lapply(enhancerfinder.enhancers, function(x) {
 names(enhancerfinder.enhancers) <- c("heart", "hindbrain", "limb", "midbrain")
 enhancerfinder.enhancers$heart
 ```
+
 And then comparing those predictions to the VISTA database, this time in hg19.
 ```{r}
 plot.data.enhancerfinder <- list()
@@ -639,6 +689,7 @@ for (tissue in names(enhancerfinder.enhancers)) {
   plot.data.enhancerfinder <- c(plot.data.enhancerfinder, plot.tissue)
 }
 ```
+
 ```{r}
 enhancerfinder.precision.recall.gain <- lapply(plot.data.enhancerfinder, function(x) {
   x <- data.frame(TISSUE = x$tissue, 
@@ -657,6 +708,7 @@ enhancerfinder.convex.hull <- lapply(plot.data.enhancerfinder, function(x) {
 enhancerfinder.convex.hull <- do.call("rbind", enhancerfinder.convex.hull)
 sapply(plot.data.enhancerfinder, function(x) x$auprg)
 ```
+
 ## Supplemental Figure 5 - Visualization of Predictions of VISTA Validated enhancers
 We begin by doing a little bit of cleaning up the data to prepare for plotting with ggplot2
 ```{r, fig.height=5, fig.width=7}
@@ -820,371 +872,6 @@ model2.plot <- ggplot(enrichment.out[enrichment.out$model == "hyper2", ], aes(na
   facet_grid(state ~ type, scales = "free_x", space = "free_x", switch = "x") +
   annotate("rect", xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=1,alpha=0.1,fill="black")
 model2.plot
-```
-
-#Figure 5 - Enrichment in genomic annotations
-## HMEC segmentation
-### StatePaintR
-```{r, message = TRUE, results = "hide"}
-hmec.states <- PaintStates(manifest = "data/manifest.hmec.txt",
-                           decisionMatrix = dm,
-                           progress = FALSE)
-ExportStatePaintR(states = hmec.states,
-                  decisionMatrix = dm,
-                  output.dir = "data/HMEC/")
-```
-### Ensembl Annotations
-```{r}
-# Active and Inactive Enhancers in HMEC
-mart <- useMart(host = "grch37.ensembl.org", 
-                biomart = "ENSEMBL_MART_FUNCGEN", 
-                dataset = "hsapiens_regulatory_feature")
-hmec.enhancers <- getBM(filters = c("regulatory_feature_type_name", "epigenome_name"),
-                        values = list(c("Enhancer"), c("HMEC")),
-                        attributes = c("chromosome_name", "chromosome_start",
-                                       "chromosome_end", "feature_type_name",
-                                       "regulatory_stable_id", "activity"),
-                        mart = mart)
-hmec.enhancers <- hmec.enhancers[order(hmec.enhancers$chromosome_name,
-                                       hmec.enhancers$chromosome_start), ]
-hmec.enhancers$chromosome_name <- paste0("chr", hmec.enhancers$chromosome_name)
-head(hmec.enhancers, n = 5)
-hmec.enhancer.gff <- data.frame(chr = hmec.enhancers$chromosome_name, 
-                                source = "ensembl_hsapiens_regulatory_feature", 
-                                feature = paste("Enhancer", hmec.enhancers$activity, sep = "_"), 
-                                start = hmec.enhancers$chromosome_start,
-                                end = hmec.enhancers$chromosome_end,
-                                score = 1000,
-                                strand = ".",
-                                frame = ".",
-                                group = hmec.enhancers$activity)
-head(hmec.enhancer.gff, n = 5)
-write.table(hmec.enhancer.gff[hmec.enhancer.gff$group == "ACTIVE", ], 
-            file = "data/active.hmec.enhancers.gff", 
-            sep = "\t", 
-            quote = FALSE,
-            row.names = FALSE,
-            col.names = FALSE)
-write.table(hmec.enhancer.gff[hmec.enhancer.gff$group == "INACTIVE", ], 
-            file = "data/inactive.hmec.enhancers.gff", 
-            sep = "\t", 
-            quote = FALSE,
-            row.names = FALSE,
-            col.names = FALSE)
-# Gencode Gene Models
-download.file(url = "ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_19/gencode.v19.annotation.gtf.gz",
-              destfile = "data/gencode.v19.annotation.gtf.gz", quiet = TRUE)
-```
-## Segtools Analysis
-In order to generate the plots to show segmentation enrichment in other genomic regions, we use [segtools](https://www.pmgenomics.ca/hoffmanlab/proj/segtools/)
-```{r engine = 'bash', eval = FALSE}
-grep -v '#' data/HMEC/e117.7mark.segmentation.bed | \
-  sed '1d' > data/HMEC/e117.7mark.segmentation.noheader.bed
-segtools-aggregation \
-  --noplot \
-  -o hmec.gene.statepaintr \
-  --mode gene \
-  --normalize \
-  data/HMEC/e117.7mark.segmentation.noheader.bed \
-  data/gencode.v19.annotation.gtf.gz
-segtools-aggregation \
-  --noplot \
-  -o data/hmec.active.enhancer.statepaintr \
-  --group \
-  --mode region \
-  --normalize \
-  data/HMEC/e117.7mark.segmentation.noheader.bed \
-  data/active.hmec.enhancers.gff
-segtools-aggregation \
-  --noplot \
-  -o data/hmec.inactive.enhancer.statepaintr \
-  --group \
-  --mode region \
-  --normalize \
-  data/HMEC/e117.7mark.segmentation.noheader.bed \
-  data/inactive.hmec.enhancers.gff
-```
-## Plotting
-First we need to parse the output of segtools to prepare for plotting
-```{r, message = FALSE}
-segtools.files <- c("Active Enhancer" = 
-                      "data/hmec.active.enhancer.statepaintr/feature_aggregation.tab",
-                    "Inactive Enhancer" = 
-                      "data/hmec.inactive.enhancer.statepaintr/feature_aggregation.tab",
-                    "Gene Body" = 
-                      "data/hmec.gene.statepaintr/feature_aggregation.tab")
-plots <- list()
-for (file in seq_along(segtools.files)) {
-  # read the file
-  data <- read_tsv(segtools.files[file], comment = "#")
-  # set component order
-  component.order <- unique(data$component)
-  # parse header for normalization
-  # header contains metadata about segments
-  header <- readLines(segtools.files[file], n = 1)
-  header <- str_replace(header, "#", "") %>% str_split(pattern = " ", simplify = TRUE)
-  header <- header[ -1 ]
-  header.names <- sapply(str_split(header, pattern = "="), "[", 1)
-  header <- as.integer(sapply(str_split(header, pattern = "="), "[", 2))
-  # create normalized values
-  norm.values <- data.frame(Segment = header.names, Total = header, stringsAsFactors = FALSE)
-  num.features <- which(norm.values$Segment %in% "num_features")
-  norm.values <- norm.values[ -num.features, ]
-  norm.values$Random <- norm.values$Total / sum(norm.values$Total)
-  # Set up data for plotting  
-  data <- gather(data, Segment, Value, 4:ncol(data))
-  data <- left_join(data, norm.values)
-  norm.values2 <- group_by(data, offset, component) %>% summarise(Offset.Total = sum(Value))
-  data <- left_join(data, norm.values2)
-  data <- mutate(data, Norm.Value = (Value / Offset.Total) + 1)
-  data <- mutate(data, Enrichment = log2(Norm.Value / (Random + 1)))
-  data[is.nan(data$Enrichment), "Enrichment"] <- 0
-  data$component <- factor(data$component, levels = component.order)
-  data$color <- "#998ec3"
-  data[ data$Enrichment > 0, "color"] <- "#f1a340"
-  if (names(segtools.files[file]) == "Gene Body") {
-    data <- data[data$component %in% c("5' flanking: 500 bp",
-                                       "initial exon (399 bp)",
-                                       "initial intron (13590 bp)",
-                                       "internal exons (154 bp)",
-                                       "internal introns (5794 bp)",
-                                       "terminal exon (886 bp)",
-                                       "terminal intron (6991 bp)",
-                                       "3' flanking: 500 bp"), ]
-  }
-  # create plots
-  segplot <- ggplot(data, aes(x = offset, fill = color)) +
-    geom_area(aes(y = Enrichment)) +
-    facet_grid(Segment ~ component, scales = "free_x") +
-    scale_fill_identity() +
-    geom_hline(yintercept = 0, size = 0.2, color = "grey50") +
-    scale_y_continuous(breaks=c(-0.5, 0, 0.5)) +
-    coord_cartesian(ylim = c(-1, 1)) +
-    theme_minimal() +
-    ggtitle(names(segtools.files[file])) + 
-    theme(axis.text.x = element_blank(),
-          legend.position="none",
-          strip.background = element_rect(fill = "grey80", colour = "grey50", size = 0.2),
-          panel.grid = element_blank(),
-          panel.background = element_rect(color = "grey50"),
-          strip.text.y = element_text(angle = 0, hjust = 0, vjust = 0.5),
-          axis.title.x = element_blank())
-  plot <- list(segplot)
-  names(plot) <- names(segtools.files[file])
-  plots <- c(plots, plot)
-}
-```
-
-#### Active Enhancers
-```{r, fig_width=5, fig_height = 5}
-plots$`Active Enhancer`
-```
-
-#### Inactive Enhancers
-```{r, fig_width=5, fig_height = 5}
-plots$`Inactive Enhancer`
-```
-
-#### Gene Bodies
-```{r, fig_width = 7, fig_height = 5}
-plots$`Gene Body`
-```
-
-# Supplemental Figures
-## Evaluate Score Combination Method - Supplementary Figure 2
-Using a benchmarking function, we can compare how StatePaintR performs using a variety of score combination methods, including finding the mean, the median, and the maximum of the scores of the features that make up the segmentations. We can compare these three score combination methods against 100 vista enhancers that were excluded above, in each category, [when comparing our predictions, and those of other enhancer prediction algorithms to VISTA](#train_subset)
-```{r}
-dm <- get.decision.matrix("5813b67f46e0fb06b493ceb0")
-dm <- doNotSplit(dm, "Core")
-mouse.embryo.states <- StatePaintR:::PaintStatesBenchmark(manifest = manifest, 
-                                                          decisionMatrix = dm, 
-                                                          scoreStates = TRUE,
-                                                          progress = FALSE)
-plot.data <- list()
-names(mouse.embryo.states) <- str_replace(names(mouse.embryo.states), " embryo", "")
-for (tissue in names(mouse.embryo.states)) {
-  predicted.scores <- mouse.embryo.states[[tissue]]
-  vista.enhancers.test <- vista.enhancers
-  mcols(vista.enhancers.test) <- data.frame(FOUND = mcols(vista.enhancers.test)[, tissue])
-  vista.enhancers.test <- vista.enhancers.test[c(which(mcols(vista.enhancers.test)[, "FOUND"] != 1), train.enhancers[[tissue]]),]
-  predicted.scores <- predicted.scores[predicted.scores$state %in% c("EARC", "ARC", "AR", "EAR"), ]
-  for (scoring in c("median", "mean", "max")) {
-    predicted.scores <- predicted.scores[order(predicted.scores[, scoring], decreasing = TRUE), ]
-    olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
-    mcols(vista.enhancers.test)$score <- 0
-    mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])[, scoring]
-    prg_curve <- create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-    auprg = calc_auprg(prg_curve)
-    convex_hull = prg_convex_hull(prg_curve)
-    plot.tissue <- list(list(tissue = tissue, scoringm = scoring, curve = prg_curve, auprg = auprg, hull = convex_hull))
-    names(plot.tissue) <- tissue
-    plot.data <- c(plot.data, plot.tissue)
-  }
-}
-
-gg.tissue <- lapply(plot.data, function(y) {
-  y <- data.frame(TISSUE = y$tissue, METHOD = y$scoringm, PRECISION = y$curve$precision_gain, RECALL = y$curve$recall_gain)
-  return(y)
-})
-gg.tissue <- do.call("rbind", gg.tissue)
-```
-
-Using the scores generated above we can see the AUPRG for each scoring method / tissue combination
-
-```{r}
-auprg <- sapply(plot.data, function(x) x[c("scoringm", "auprg")])
-data.frame(tissue = colnames(auprg), scoring.method = unlist(auprg["scoringm", ]), auprg = unlist(auprg["auprg", ]))
-```
-
-We can also generate the plot, which shows that while relying on the maximum score does not necissarily give the best AUPRG, it does have good performance towards it's tail at with high recall gain.
-
-```{r, fig_width = 7, fig_height = 5}
-sfigure2 <- ggplot(gg.tissue, aes(y = PRECISION, x = RECALL, group = METHOD)) +
-  geom_line(aes(color = METHOD)) +
-  geom_point(aes(color = METHOD)) +
-  coord_cartesian(xlim=c(0,1), ylim = c(0,1)) +
-  scale_color_brewer(palette = "Set2") +
-  theme_grey() + theme(aspect.ratio=1) +
-  ggtitle("Supplementary Figure 2 - Combining Scores") +
-  ylab("Precision Gain") + xlab("Recall Gain") +
-  facet_wrap( ~ TISSUE, ncol = 3)
-sfigure2
-```
-
-## Evaluate Scoring - Supplementary Figure 3
-We can download the focused poised promoter model, and then modify the manner in which it scores segments. In the abstraction layer we can declare that a class of feature must not be split into subfeatures, by surrounding it in brackets, i.e., `[Core]`. Additionally we can specify that the scores from a specific feature should not be used in scoring segments, by following it with a star `*` like so: `Active*` or `[Core]*`. Based on this we can generate four different version of scoring based upon the same segmentation rules. A version called `noactive` does not use the score from the active mark, `nocore` does not use the score from the core mark, `noregulatory` ignores the score from the regulatory mark, and `all` uses the score from all marks.
-```{r}
-x <- get.decision.matrix("5813b67f46e0fb06b493ceb0")
-x <- doNotSplit(x, "Core")
-#onescore
-noactive.x <- x
-noactive.x <- doNotScore(noactive.x, "Active")
-nocore.x <- x
-nocore.x <- doNotScore(nocore.x, "Core")
-noregulatory.x <- x
-noregulatory.x <- doNotScore(noregulatory.x, "Regulatory")
-#twoscores
-all.x <- x
-dms <- list(noactive.x, nocore.x, noregulatory.x, all.x)
-names(dms) <- c("noactive", "nocore", "noregulatory", "all")
-dms
-```
-We can compare these four scoring models against the 100 vista enhancers that were excluded above, in each category, [when comparing our predictions, and those of other enhancer prediction algorithms to VISTA](#train_subset)
-```{r}
-states <- dms
-states <- lapply(states, function(x) {NA})
-for (dm in seq_along(dms)) {
-  plot.data <- list()
-  mouse.embryo.states <- PaintStates(manifest = manifest, 
-                                     decisionMatrix = dms[[dm]], 
-                                     scoreStates = TRUE,
-                                     progress = FALSE)
-  names(mouse.embryo.states) <- str_replace(names(mouse.embryo.states), " embryo", "")
-  for (tissue in names(mouse.embryo.states)) {
-    predicted.scores <- mouse.embryo.states[[tissue]]
-    vista.enhancers.test <- vista.enhancers
-    mcols(vista.enhancers.test) <- data.frame(FOUND=mcols(vista.enhancers.test)[, tissue])
-    vista.enhancers.test <- vista.enhancers.test[c(which(mcols(vista.enhancers.test)[, "FOUND"] != 1), train.enhancers[[tissue]]),]
-    predicted.scores <- predicted.scores[predicted.scores$state %in% c("EARC", "ARC", "AR", "EAR"), ]
-    predicted.scores <- predicted.scores[order(predicted.scores$score, decreasing = TRUE), ]
-    olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
-    mcols(vista.enhancers.test)$score <- 0
-    mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-    prg_curve <- create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-    auprg = calc_auprg(prg_curve)
-    convex_hull = prg_convex_hull(prg_curve)
-    plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
-    names(plot.tissue) <- tissue
-    plot.data <- c(plot.data, plot.tissue)
-  }
-  sapply(plot.data, function(x) x$auprg)
-  gg.tissue <- lapply(plot.data, function(x) {
-    x <- data.frame(TISSUE = x$tissue, PRECISION = x$curve$precision_gain, RECALL = x$curve$recall_gain)
-    return(x)
-  })
-  gg.tissue.sp <- do.call("rbind", gg.tissue)
-  gg.tissue.sp$DM <- names(dms)[dm]
-  states[[dm]] <- gg.tissue.sp
-}
-gg.tissue <- do.call("rbind", states)
-```
-We can then plot these four scoring models across the tissue specific enhancers that we interrogated from VISTA to see which combination of scores serves to best predict enhancers.
-```{r, fig_width = 7, fig_height = 5}
-sfigure3 <- ggplot(gg.tissue, aes(y = PRECISION, x = RECALL, group = DM)) +
-  geom_line(aes(color = DM)) +
-  geom_point(aes(color = DM)) +
-  coord_cartesian(xlim=c(0,1), ylim = c(0,1)) +
-  scale_color_brewer(palette = "Set1") +
-  theme_grey() + theme(aspect.ratio=1) +
-  ggtitle("Supplementary Figure 3 - Scoring Features") +
-  ylab("Precision Gain") + xlab("Recall Gain") +
-  facet_wrap( ~ TISSUE, ncol = 3)
-sfigure3
-```
-
-Based upon this plot we decided to go forward without including the Regulatory mark in our scoring.
-
-## Evaluate Features that Comprise Enhancers -  Supplementary Figure 4
-We considered which combinations of segments would provide the best description of an active enhancer as found in VISTA. We generated five groups of marks. Our active *Active Enhancer* group incorporated `EAR`, `AR`, `EARC`, and `ARC`, our *Active Promoter* group consists of `PAR` and `PARC`, the `Silenced` group is `SCR` and `HET`, *Poised and Weak Enhancer* consists of `EPR`, `EPRC`, `EWR`, `EWRC`, and our *Poised and Weak Promoter* group is `PPR`, `PPRC`, `PWR`, `PWRC`, `PPWR`, and `PPWRC`. We evaluated each of these combinations against the 100 vista enhancers that were excluded above, in each category, [when comparing our predictions, and those of other enhancer prediction algorithms to VISTA](#train_subset)
-```{r}
-dm <- get.decision.matrix("5813b67f46e0fb06b493ceb0")
-dm <- doNotSplit(dm, "Core")
-dm <- doNotScore(dm, "Regulatory")
-dm <- doNotScore(dm, "Promoter")
-
-segments <- list(A.Enhancer = c("EAR", "AR", "EARC", "ARC"),
-                 A.Promoter = c("PAR", "PARC"),
-                 Silenced = c("SCR", "HET"),
-                 PW.Enhancer = c("EPR", "EPRC", "EWR", "EWRC"),
-                 PW.Promoter = c("PPR", "PPRC", "PWR", "PWRC", "PPWR", "PPWRC"))
-
-mouse.embryo.states <- PaintStates(manifest = manifest, 
-                                   decisionMatrix = dm, 
-                                   scoreStates = TRUE,
-                                   progress = FALSE)
-names(mouse.embryo.states) <- str_replace(names(mouse.embryo.states), " embryo", "")
-for (segment in seq_along(segments)) {
-  plot.data <- list()
-  for (tissue in names(mouse.embryo.states)) {
-    predicted.scores <- mouse.embryo.states[[tissue]]
-    vista.enhancers.test <- vista.enhancers
-    mcols(vista.enhancers.test) <- data.frame(FOUND=mcols(vista.enhancers.test)[, tissue])
-    vista.enhancers.test <- vista.enhancers.test[c(which(mcols(vista.enhancers.test)[, "FOUND"] != 1), train.enhancers[[tissue]]),]
-    predicted.scores <- predicted.scores[predicted.scores$state %in% segments[[segment]], ]
-    predicted.scores <- predicted.scores[order(predicted.scores$score, decreasing = TRUE), ]
-    olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
-    mcols(vista.enhancers.test)$score <- 0
-    mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-    prg_curve <- create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-    auprg = calc_auprg(prg_curve)
-    convex_hull = prg_convex_hull(prg_curve)
-    plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
-    names(plot.tissue) <- tissue
-    plot.data <- c(plot.data, plot.tissue)
-  }
-  sapply(plot.data, function(x) x$auprg)
-  gg.tissue <- lapply(plot.data, function(x) {
-    x <- data.frame(TISSUE = x$tissue, PRECISION = x$curve$precision_gain, RECALL = x$curve$recall_gain)
-    return(x)
-  })
-  gg.tissue <- do.call("rbind", gg.tissue)
-  gg.tissue$SEGMENTS <- names(segments)[segment]
-  segments[[segment]] <- gg.tissue
-}
-gg.tissue <- do.call("rbind", segments)
-```
-By Plotting the Precision Recall Gain curves, we see that, as expected our *Active Enhancer* group has the best accuracy across tissue types.
-```{r, fig_width = 7, fig_height = 5}
-sfigure4 <- ggplot(gg.tissue, aes(y = PRECISION, x = RECALL, group = SEGMENTS)) +
-  geom_line(aes(color = SEGMENTS)) +
-  geom_point(aes(color = SEGMENTS)) +
-  coord_cartesian(xlim=c(0,1), ylim = c(0,1)) +
-  scale_color_brewer(palette = "Paired") +
-  theme_grey() + theme(aspect.ratio = 1) +
-  ggtitle("Supplementary Figure 4 - Scoring Segments") +
-  ylab("Precision Gain") + xlab("Recall Gain") +
-  facet_wrap( ~ TISSUE, ncol = 3)
-sfigure4
 ```
 
 ```{r}
