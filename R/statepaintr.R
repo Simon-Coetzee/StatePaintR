@@ -1,20 +1,30 @@
-#' Run a StatePaintR decisionMatrix against a group of files listed in a manifest.
+#' Run a StatePaintR decisionMatrix against a group of files listed in a
+#' manifest.
 #'
-#' @param manifest A character vector containing the filename of the manifest file. See details for the expected format
+#' @param manifest A character vector containing the filename of the manifest
+#'   file. See details for the expected format
 #' @param decisionMatrix An object of class \code{\linkS4class{decisionMatrix}}.
-#' @param scoreStates logical; if scores have been specified in the decisionMatrix, should the states be scored?
+#' @param scoreStates logical; if scores have been specified in the
+#'   decisionMatrix, should the states be scored?
 #' @param progress logical; show progress bar and timing details?
 #'
-#' @return A \code{\link{GRangesList}}, each \code{\link{GRanges}} object describing the states of all
-#' segements for a sample. Each range is described by the fields \code{name} indicating the sample,
-#' \code{state} indicating the state, and optionally \code{score} indicating the score of the state
-#' @details The manifest is a tab delimited file containing five fields; SAMPLE, MARK, SRC, BUILD, and FILE. \cr
-#' `SAMPLE` refers to the sample to which the marks are related, like a cell line, or tissue. \cr
-#' `MARK` refers to the chromatin mark, or other feature described in the \code{\linkS4class{decisionMatrix}} \code{abstractionLayer} \cr
-#' `SRC` refers to the source of the data, retained for documentation, but not used in the functions. \cr
-#' `BUILD` refers to the genome build of the data tracks. All tracks under a single sample must be of the same genome build. \cr
-#' `FILE` refers to the location of the file describing the mark. Can be .bed, .narrowPeak, .gappedPeak, etc. Only the first three
-#' columns are used, `chromosome`, `start`, and `end`, unless \code{scoreStates = TRUE}, in which case a narrowPeak file is required.
+#' @return A \code{\link{GRangesList}}, each \code{\link{GRanges}} object
+#'   describing the states of all segements for a sample. Each range is
+#'   described by the fields \code{name} indicating the sample, \code{state}
+#'   indicating the state, and optionally \code{score} indicating the score of
+#'   the state
+#' @details The manifest is a tab delimited file containing five fields; SAMPLE,
+#'   MARK, SRC, BUILD, and FILE. \cr `SAMPLE` refers to the sample to which the
+#'   marks are related, like a cell line, or tissue. \cr `MARK` refers to the
+#'   chromatin mark, or other feature described in the
+#'   \code{\linkS4class{decisionMatrix}} \code{abstractionLayer} \cr `SRC`
+#'   refers to the source of the data, retained for documentation, but not used
+#'   in the functions. \cr `BUILD` refers to the genome build of the data
+#'   tracks. All tracks under a single sample must be of the same genome build.
+#'   \cr `FILE` refers to the location of the file describing the mark. Can be
+#'   .bed, .narrowPeak, .gappedPeak, etc. Only the first three columns are used,
+#'   `chromosome`, `start`, and `end`, unless \code{scoreStates = TRUE}, in
+#'   which case a narrowPeak file is required.
 #' @examples
 #' manifest <- system.file("extdata", "manifest.hmec.txt", package = "StatePaintR")
 #' load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"))
@@ -67,7 +77,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     skipname <- cell.sample
     cell.sample <- samples[[cell.sample]]
     x <- GetBioFeatures(manifest = cell.sample, dm = decisionMatrix, my.seqinfo = sample.genomes[[cell.sample[1, "BUILD"]]])
-    if(is.null(x)) {
+    if (is.null(x)) {
       warning(cell.sample[1, "SAMPLE"], " has no MARKs that are present in the translation layer \n",
               " MARKs included are ", paste(cell.sample[, "MARK"], collapse = " "))
       skipped <- c(skipped, skipname)
@@ -81,7 +91,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
       return(out)
       })
     notInTranslationLayer <- sapply(inputset, is.null)
-    if(all(sapply(inputset, is.null))) {
+    if (all(sapply(inputset, is.null))) {
       warning(cell.sample[1, "SAMPLE"], " has no MARKs that are present in the translation layer \n",
               " MARKs included are ", paste(cell.sample[, "MARK"], collapse = " "))
       skipped <- c(skipped, skipname)
@@ -189,26 +199,6 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
         feature.scores <- scorematrix[segments$state == score.feature,
                                       score.cells[rownames(score.cells) %in% score.feature, "col"],
                                       drop = FALSE]
-        ## debug
-        # if (score.feature == score.features[[1]]) {
-        #   feature.score.tmp1 <- scorematrix[segments$state == score.feature, ]
-        #   feature.score.tmp1 <- cbind(state = segments[segments$state == score.feature, "state"], feature.score.tmp1)
-        #   if (is(feature.scores, "matrix")) {
-        #     feature.score.tmp1 <- cbind(feature.score.tmp1, totalscore = rowMedians(feature.scores))
-        #   } else {
-        #     feature.score.tmp1 <- cbind(feature.score.tmp1, totalscore = feature.scores / 2)
-        #   }
-        # } else {
-        #   feature.score.tmp2 <- scorematrix[segments$state == score.feature, ]
-        #   feature.score.tmp2 <- cbind(state = segments[segments$state == score.feature, "state"], feature.score.tmp2)
-        #   if (is(feature.scores, "matrix")) {
-        #     feature.score.tmp2 <- cbind(feature.score.tmp2, totalscore = rowMedians(feature.scores))
-        #   } else {
-        #     feature.score.tmp2 <- cbind(feature.score.tmp2, totalscore = feature.scores / 2)
-        #   }
-        #   feature.score.tmp1 <- rbind(feature.score.tmp1, feature.score.tmp2)
-        # }
-        ## end debug
         #feature.scores.df <- data.frame(median = numeric(), mean = numeric(), max = numeric())
         if (is(feature.scores, "matrix")) {
           feature.scores <- rowMaxs(feature.scores)
@@ -304,9 +294,10 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 #' Write StatePaintR object to bedfiles
 #'
 #' @param states A GRangesList produced by \code{\link{PaintStates}}
-#' @param decisionMatrix The \code{\linkS4class{decisionMatrix}} object used to produce the states
-#' @param output.dir A character string indicating the directory to save the exported states.
-#' The directory will be created if it does not exist.
+#' @param decisionMatrix The \code{\linkS4class{decisionMatrix}} object used to
+#'   produce the states
+#' @param output.dir A character string indicating the directory to save the
+#'   exported states. The directory will be created if it does not exist.
 #' @param progress logical; show progress bar and timing details?
 #'
 #' @importFrom dplyr left_join
@@ -419,13 +410,17 @@ get.decision.matrix <- function(search) {
 #' @slot author character. The author of the model on StateHub
 #' @slot revision character. The revision of the model. A time stamp
 #' @slot description character. A short description of the model.
-#' @slot abstraction.layer list. A description of the relationship between the precise data type (e.g. a chromatin mark like H3K27ac)
-#' and feature describing the functional category in the decision.matrix (e.g. Regulatory).
-#' @slot decision.matrix matrix. The description of what combination of features are required to call a state.
+#' @slot abstraction.layer list. A description of the relationship between the
+#'   precise data type (e.g. a chromatin mark like H3K27ac) and feature
+#'   describing the functional category in the decision.matrix (e.g.
+#'   Regulatory).
+#' @slot decision.matrix matrix. The description of what combination of features
+#'   are required to call a state.
 #' @slot state.colors character. The color to assign to each state.
 #'
 #' @import methods
-#' @return an object of class decisionMatrix, normally made in response to a query to StateHub with \code{\link{get.decision.matrix}}
+#' @return an object of class decisionMatrix, normally made in response to a
+#'   query to StateHub with \code{\link{get.decision.matrix}}
 #' @export
 #'
 setClass(Class = "decisionMatrix",
@@ -470,12 +465,15 @@ setMethod("decisionMatrix",
 #'
 #' @param object of class decisionMatrix
 #'
-#' @return a list; A description of the relationship between the precise data type (e.g. a chromatin mark like H3K27ac)
-#' and feature describing the functional category in the decision.matrix (e.g. Regulatory).
-#' @details In the abstraction layer one may indicate if a functional category should not be used for scoring states.
-#' This is done by placing an asterisk at the end of it's name (e.g. Regulatory*). One may also specify that
-#' a certain type of functional category never be split into smaller units by its overlapping with other features.
-#' This is done by placing the name of the functional category in square brackets (e.g. [Core])
+#' @return a list; A description of the relationship between the precise data
+#'   type (e.g. a chromatin mark like H3K27ac) and feature describing the
+#'   functional category in the decision.matrix (e.g. Regulatory).
+#' @details In the abstraction layer one may indicate if a functional category
+#'   should not be used for scoring states. This is done by placing an asterisk
+#'   at the end of it's name (e.g. Regulatory*). One may also specify that a
+#'   certain type of functional category never be split into smaller units by
+#'   its overlapping with other features. This is done by placing the name of
+#'   the functional category in square brackets (e.g. [Core])
 #' @export
 #'
 #' @examples
@@ -496,12 +494,14 @@ setMethod("abstractionLayer",
 #' doNotScore
 #'
 #' @param decisionMatrix of class decisionMatrix
-#' @param functionalCategory a character vector indicating the functional category to be
-#' excluded from scoring.
-#' @return a decisionMatrix; the abstractionLayer of the decision matrix will be altered
-#' to indicate that the functional category indicated must not be used in scoring calculations.
-#' @details Sometimes one may wish to use a functional category for calling a state, but not use
-#' the functional category for any scoring. This allows the user that option.
+#' @param functionalCategory a character vector indicating the functional
+#'   category to be excluded from scoring.
+#' @return a decisionMatrix; the abstractionLayer of the decision matrix will be
+#'   altered to indicate that the functional category indicated must not be used
+#'   in scoring calculations.
+#' @details Sometimes one may wish to use a functional category for calling a
+#'   state, but not use the functional category for any scoring. This allows the
+#'   user that option.
 #' @export
 #'
 #' @examples
@@ -532,14 +532,15 @@ doNotScore <- function(decisionMatrix, functionalCategory) {
 #' doNotSplit
 #'
 #' @param decisionMatrix of class decisionMatrix
-#' @param functionalCategory a character vector indicating intervals described by the
-#'  functional category will never be split into smaller intervals
-#' @return a decisionMatrix; the abstractionLayer of the decision matrix will be altered
-#' to indicate that the functional category indicated must not be split.
-#' @details Some functional categories described in an abstraction layer may perform better
-#' or more like one expects if they are never split into smaller intervals due to being
-#' overlapped by other functional categories. One may indicate if this is the case with this
-#' function
+#' @param functionalCategory a character vector indicating intervals described
+#'   by the functional category will never be split into smaller intervals
+#' @return a decisionMatrix; the abstractionLayer of the decision matrix will be
+#'   altered to indicate that the functional category indicated must not be
+#'   split.
+#' @details Some functional categories described in an abstraction layer may
+#'   perform better or more like one expects if they are never split into
+#'   smaller intervals due to being overlapped by other functional categories.
+#'   One may indicate if this is the case with this function
 #' @export
 #'
 #' @examples

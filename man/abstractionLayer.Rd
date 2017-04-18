@@ -10,17 +10,20 @@ abstractionLayer(object)
 \item{object}{of class decisionMatrix}
 }
 \value{
-a list; A description of the relationship between the precise data type (e.g. a chromatin mark like H3K27ac)
-and feature describing the functional category in the decision.matrix (e.g. Regulatory).
+a list; A description of the relationship between the precise data
+  type (e.g. a chromatin mark like H3K27ac) and feature describing the
+  functional category in the decision.matrix (e.g. Regulatory).
 }
 \description{
 abstractionLayer
 }
 \details{
-In the abstraction layer one may indicate if a functional category should not be used for scoring states.
-This is done by placing an asterisk at the end of it's name (e.g. Regulatory*). One may also specify that
-a certain type of functional category never be split into smaller units by its overlapping with other features.
-This is done by placing the name of the functional category in square brackets (e.g. [Core])
+In the abstraction layer one may indicate if a functional category
+  should not be used for scoring states. This is done by placing an asterisk
+  at the end of it's name (e.g. Regulatory*). One may also specify that a
+  certain type of functional category never be split into smaller units by
+  its overlapping with other features. This is done by placing the name of
+  the functional category in square brackets (e.g. [Core])
 }
 \examples{
 load(system.file("extdata", "poised.promoter.model.rda", package = "StatePaintR"))

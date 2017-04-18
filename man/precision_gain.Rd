@@ -16,11 +16,21 @@ precision_gain(TP, FN, FP, TN)
 \item{TN}{number of true negatives, can be a vector}
 }
 \value{
-Precision Gain (a numeric value less than or equal to 1; or -Inf or NaN, see the details below)
+Precision Gain (a numeric value less than or equal to 1; or -Inf or
+  NaN, see the details below)
 }
 \description{
-This function calculates Precision Gain from the entries of the contingency table: number of true positives (TP), false negatives (FN), false positives (FP), and true negatives (TN). More information on Precision-Recall-Gain curves and how to cite this work is available at http://www.cs.bris.ac.uk/~flach/PRGcurves/.
+This function calculates Precision Gain from the entries of the contingency
+table: number of true positives (TP), false negatives (FN), false positives
+(FP), and true negatives (TN). More information on Precision-Recall-Gain
+curves and how to cite this work is available at
+http://www.cs.bris.ac.uk/~flach/PRGcurves/.
 }
 \details{
-Precision Gain (PrecGain) quantifies by how much precision is improved over the default precision of the always positive predictor, equal to the proportion of positives (pi). PrecGain=1 stands for maximal improvement (Prec=1) and PrecGain=0 stands for no improvement (Prec=pi). If Prec=0, then PrecGain=-Inf. It can happen that PrecGain=NaN, for instance if there are no positives (TP=0 and FN=0) and TN>0.
+Precision Gain (PrecGain) quantifies by how much precision is
+  improved over the default precision of the always positive predictor, equal
+  to the proportion of positives (pi). PrecGain=1 stands for maximal
+  improvement (Prec=1) and PrecGain=0 stands for no improvement (Prec=pi). If
+  Prec=0, then PrecGain=-Inf. It can happen that PrecGain=NaN, for instance
+  if there are no positives (TP=0 and FN=0) and TN>0.
 }

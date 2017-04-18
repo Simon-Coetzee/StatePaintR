@@ -7,11 +7,15 @@
 prg_convex_hull(prg_curve)
 }
 \arguments{
-\item{prg_curve}{the data structure resulting from the function create_prg_curve}
+\item{prg_curve}{the data structure resulting from the function
+create_prg_curve}
 }
 \value{
 the data.frame representing the convex hull
 }
 \description{
-This function creates the convex hull of the Precision-Recall-Gain curve resulting from the function create_prg_curve and calculates the F-calibrated scores. More information on Precision-Recall-Gain curves and how to cite this work is available at http://www.cs.bris.ac.uk/~flach/PRGcurves/.
+This function creates the convex hull of the Precision-Recall-Gain curve
+resulting from the function create_prg_curve and calculates the F-calibrated
+scores. More information on Precision-Recall-Gain curves and how to cite this
+work is available at http://www.cs.bris.ac.uk/~flach/PRGcurves/.
 }

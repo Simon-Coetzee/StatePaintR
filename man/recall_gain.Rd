@@ -16,11 +16,20 @@ recall_gain(TP, FN, FP, TN)
 \item{TN}{number of true negatives, can be a vector}
 }
 \value{
-Recall Gain (a numeric value less than or equal to 1; or -Inf or NaN, see the details below)
+Recall Gain (a numeric value less than or equal to 1; or -Inf or NaN,
+  see the details below)
 }
 \description{
-This function calculates Recall Gain from the entries of the contingency table: number of true positives (TP), false negatives (FN), false positives (FP), and true negatives (TN). More information on Precision-Recall-Gain curves and how to cite this work is available at http://www.cs.bris.ac.uk/~flach/PRGcurves/.
+This function calculates Recall Gain from the entries of the contingency
+table: number of true positives (TP), false negatives (FN), false positives
+(FP), and true negatives (TN). More information on Precision-Recall-Gain
+curves and how to cite this work is available at
+http://www.cs.bris.ac.uk/~flach/PRGcurves/.
 }
 \details{
-Recall Gain (RecGain) quantifies by how much recall is improved over the recall equal to the proportion of positives (pi). RecGain=1 stands for maximal improvement (Rec=1) and RecGain=0 stands for no improvement (Rec=pi). If Rec=0, then RecGain=-Inf. It can happen that RecGain=NaN, for instance if there are no negatives (FP=0 and TN=0) and FN>0 and TP=0.
+Recall Gain (RecGain) quantifies by how much recall is improved over
+  the recall equal to the proportion of positives (pi). RecGain=1 stands for
+  maximal improvement (Rec=1) and RecGain=0 stands for no improvement
+  (Rec=pi). If Rec=0, then RecGain=-Inf. It can happen that RecGain=NaN, for
+  instance if there are no negatives (FP=0 and TN=0) and FN>0 and TP=0.
 }

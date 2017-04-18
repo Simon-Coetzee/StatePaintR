@@ -9,19 +9,21 @@ doNotScore(decisionMatrix, functionalCategory)
 \arguments{
 \item{decisionMatrix}{of class decisionMatrix}
 
-\item{functionalCategory}{a character vector indicating the functional category to be
-excluded from scoring.}
+\item{functionalCategory}{a character vector indicating the functional
+category to be excluded from scoring.}
 }
 \value{
-a decisionMatrix; the abstractionLayer of the decision matrix will be altered
-to indicate that the functional category indicated must not be used in scoring calculations.
+a decisionMatrix; the abstractionLayer of the decision matrix will be
+  altered to indicate that the functional category indicated must not be used
+  in scoring calculations.
 }
 \description{
 doNotScore
 }
 \details{
-Sometimes one may wish to use a functional category for calling a state, but not use
-the functional category for any scoring. This allows the user that option.
+Sometimes one may wish to use a functional category for calling a
+  state, but not use the functional category for any scoring. This allows the
+  user that option.
 }
 \examples{
 dm <- get.decision.matrix("5813b67f46e0fb06b493ceb0")

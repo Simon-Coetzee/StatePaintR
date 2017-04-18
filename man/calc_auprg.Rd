@@ -7,14 +7,22 @@
 calc_auprg(prg_curve)
 }
 \arguments{
-\item{prg_curve}{the data structure resulting from the function create_prg_curve}
+\item{prg_curve}{the data structure resulting from the function
+create_prg_curve}
 }
 \value{
-A numeric value representing the area under the Precision-Recall-Gain curve.
+A numeric value representing the area under the Precision-Recall-Gain
+  curve.
 }
 \description{
-This function calculates the area under the Precision-Recall-Gain curve from the results of the function create_prg_curve. More information on Precision-Recall-Gain curves and how to cite this work is available at http://www.cs.bris.ac.uk/~flach/PRGcurves/.
+This function calculates the area under the Precision-Recall-Gain curve from
+the results of the function create_prg_curve. More information on
+Precision-Recall-Gain curves and how to cite this work is available at
+http://www.cs.bris.ac.uk/~flach/PRGcurves/.
 }
 \details{
-This function calculates the area under the Precision-Recall-Gain curve, taking into account only the part of the curve with non-negative recall gain. The regions with negative precision gain (PRG-curve under the x-axis) contribute as negative area.
+This function calculates the area under the Precision-Recall-Gain
+  curve, taking into account only the part of the curve with non-negative
+  recall gain. The regions with negative precision gain (PRG-curve under the
+  x-axis) contribute as negative area.
 }

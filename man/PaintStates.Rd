@@ -2,35 +2,46 @@
 % Please edit documentation in R/statepaintr.R
 \name{PaintStates}
 \alias{PaintStates}
-\title{Run a StatePaintR decisionMatrix against a group of files listed in a manifest.}
+\title{Run a StatePaintR decisionMatrix against a group of files listed in a
+manifest.}
 \usage{
 PaintStates(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE)
 }
 \arguments{
-\item{manifest}{A character vector containing the filename of the manifest file. See details for the expected format}
+\item{manifest}{A character vector containing the filename of the manifest
+file. See details for the expected format}
 
 \item{decisionMatrix}{An object of class \code{\linkS4class{decisionMatrix}}.}
 
-\item{scoreStates}{logical; if scores have been specified in the decisionMatrix, should the states be scored?}
+\item{scoreStates}{logical; if scores have been specified in the
+decisionMatrix, should the states be scored?}
 
 \item{progress}{logical; show progress bar and timing details?}
 }
 \value{
-A \code{\link{GRangesList}}, each \code{\link{GRanges}} object describing the states of all
-segements for a sample. Each range is described by the fields \code{name} indicating the sample,
-\code{state} indicating the state, and optionally \code{score} indicating the score of the state
+A \code{\link{GRangesList}}, each \code{\link{GRanges}} object
+  describing the states of all segements for a sample. Each range is
+  described by the fields \code{name} indicating the sample, \code{state}
+  indicating the state, and optionally \code{score} indicating the score of
+  the state
 }
 \description{
-Run a StatePaintR decisionMatrix against a group of files listed in a manifest.
+Run a StatePaintR decisionMatrix against a group of files listed in a
+manifest.
 }
 \details{
-The manifest is a tab delimited file containing five fields; SAMPLE, MARK, SRC, BUILD, and FILE. \cr
-`SAMPLE` refers to the sample to which the marks are related, like a cell line, or tissue. \cr
-`MARK` refers to the chromatin mark, or other feature described in the \code{\linkS4class{decisionMatrix}} \code{abstractionLayer} \cr
-`SRC` refers to the source of the data, retained for documentation, but not used in the functions. \cr
-`BUILD` refers to the genome build of the data tracks. All tracks under a single sample must be of the same genome build. \cr
-`FILE` refers to the location of the file describing the mark. Can be .bed, .narrowPeak, .gappedPeak, etc. Only the first three
-columns are used, `chromosome`, `start`, and `end`, unless \code{scoreStates = TRUE}, in which case a narrowPeak file is required.
+The manifest is a tab delimited file containing five fields; SAMPLE,
+  MARK, SRC, BUILD, and FILE. \cr `SAMPLE` refers to the sample to which the
+  marks are related, like a cell line, or tissue. \cr `MARK` refers to the
+  chromatin mark, or other feature described in the
+  \code{\linkS4class{decisionMatrix}} \code{abstractionLayer} \cr `SRC`
+  refers to the source of the data, retained for documentation, but not used
+  in the functions. \cr `BUILD` refers to the genome build of the data
+  tracks. All tracks under a single sample must be of the same genome build.
+  \cr `FILE` refers to the location of the file describing the mark. Can be
+  .bed, .narrowPeak, .gappedPeak, etc. Only the first three columns are used,
+  `chromosome`, `start`, and `end`, unless \code{scoreStates = TRUE}, in
+  which case a narrowPeak file is required.
 }
 \examples{
 manifest <- system.file("extdata", "manifest.hmec.txt", package = "StatePaintR")
