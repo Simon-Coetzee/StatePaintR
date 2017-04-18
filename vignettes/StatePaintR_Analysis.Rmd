@@ -45,20 +45,10 @@ library(dplyr)
 library(httr)
 library(readr)
 library(devtools)
-```
-
-And then we install StatePaintR, currently from [GitHub](https://github.com/Simon-Coetzee/StatePaintr).
-
-```{r, message = FALSE, eval = FALSE}
-install_github("Simon-Coetzee/StatePaintR")
 library(StatePaintR)
 ```
 
-```{r, echo = FALSE, message = FALSE}
-library(StatePaintR)
-```
-
-Finally we download all of the data required to run this vignette:
+Additionally we download all of the data required to run this vignette:
 
 ```{r}
 download.file("https://s3-us-west-2.amazonaws.com/statehub-trackhub/statepaintr_vignette_data.tar.gz", "statepaintr_data.tar.gz")
@@ -874,7 +864,8 @@ model2.plot
 ```
 
 #### Clean Up
+This file was last modified on April 18, 2017
 ```{r}
-file.remove("statepaintr_data", recursive = TRUE)
 sessionInfo()
+file.remove("statepaintr_data", recursive = TRUE)
 ```

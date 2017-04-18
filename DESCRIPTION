@@ -1,7 +1,7 @@
 Package: StatePaintR
 Type: Package
 Title: StatePaintR: a tool for creating and documenting reproducible chromatin state annotations from StateHub
-Version: 0.99.1
+Version: 0.99.2
 Author: Simon Coetzee
 Maintainer: Simon Coetzee <simon.coetzee@cshs.org>
 Description: Genome annotation is critical to understand the function of disease variants, especially for clinical applications. To meet this need there are segmentations available from public consortia reflecting varying unsupervised approaches to functional annotation based on epigenetics data, but there remains a need for transparent, reproducible, and easily interpreted genomic maps of the functional biology of chromatin. We introduce here methods for defining chromatin state with a combinatorial epigenomic model using an annotation tool, StatePaintR and a website database, StateHub. Annotations are fully documented with change history and versioning, authorship information, and original source files. The tool calculates quantitative state scores based on genome-wide ranking, allowing prioritization and enrichment testing, facilitating quantitative analysis. StateHub hosts annotation tracks for major public consortia as a resource, and allows users to submit their own alternative models.
