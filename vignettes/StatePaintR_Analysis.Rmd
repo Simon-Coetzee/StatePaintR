@@ -80,7 +80,7 @@ decisionmatrix
 ## Generate a Manifest 
 We need a manifest indicating the data that we want to segment
 ```{r}
-manifest <- "data/manifest.hmec.txt"
+manifest <- "statepaintr_data/manifest.hmec.txt"
 read.table(manifest,
            sep = "\t",
            stringsAsFactors = FALSE,
@@ -90,7 +90,7 @@ read.table(manifest,
 ## Segment the Genome
 Using the manifest, and the decision matrix we aquired above, we can segment the genome
 ```{r}
-hmec.states <- PaintStates(manifest = "data/manifest.hmec.txt",
+hmec.states <- PaintStates(manifest = "statepaintr_data/manifest.hmec.txt",
                            decisionMatrix = decisionmatrix,
                            progress = FALSE)
 hmec.states
@@ -101,7 +101,7 @@ Once we have generated the segmentations, we can write them to disk as a bed fil
 ```{r, eval = FALSE}
 ExportStatePaintR(states = hmec.states,
                   decisionMatrix = dm,
-                  output.dir = "data/HMEC/")
+                  output.dir = "statepaintr_data/HMEC/")
 ```
 
 # Performance of enhancer predictions
@@ -109,7 +109,7 @@ ExportStatePaintR(states = hmec.states,
 In order to determine a basis for true positive enhancers we use enhancers validated by the [VISTA enhancer browser](https://enhancer.lbl.gov/).
 We can begin by reading the VISTA data from a bed file. The original data comes from the ENCODE [annotation file set ENCSR964TTF](https://www.encodeproject.org/annotations/ENCSR964TTF/)
 ```{r, message = FALSE}
-vista.enhancers <- read_tsv("data/VISTA_invivo_tested.bed", col_names = FALSE)
+vista.enhancers <- read_tsv("statepaintr_data/VISTA_invivo_tested.bed", col_names = FALSE)
 vista.enhancers
 ```
 
@@ -177,7 +177,7 @@ Using the data made availible by the ENCODE project we can retrieve data on mult
 
 [Narrowpeak](https://genome.ucsc.edu/FAQ/FAQformat#format12) calls for this data and our manifest are included with this document. In order to use DNase-seq when availible, we used the [IDR](https://www.encodeproject.org/software/idr/) process to merge replicates.
 ```{r}
-manifest <- "data/mouse.idr/IDR.Manifest.txt"
+manifest <- "statepaintr_data/mouse.idr/IDR.Manifest.txt"
 head(read.table(manifest,
                 sep = "\t",
                 stringsAsFactors = FALSE,
@@ -368,7 +368,7 @@ reptile.enhancers <- c("neural tube" = "NT",
                        limb          = "LM",
                        heart         = "HT")
 reptile.enhancers <- lapply(reptile.enhancers, function(x) {
-  file.path <- file.path("data", "enhancer_predictions", "REPTILE", paste0("REPTILE_pred_E11_5_", x, ".bed"))
+  file.path <- file.path("statepaintr_data", "enhancer_predictions", "REPTILE", paste0("REPTILE_pred_E11_5_", x, ".bed"))
   x <- read_tsv(file.path, col_names = FALSE)
   x <- GRanges(seqnames = x$X1,
                ranges = IRanges(start = x$X2,
@@ -432,7 +432,7 @@ delta.enhancers <- c("neural tube" = "NT",
                        limb          = "LM",
                        heart         = "HT")
 delta.enhancers <- lapply(delta.enhancers, function(x) {
-  file.path <- file.path("data", "enhancer_predictions", "DELTA", paste0("DELTA_pred_E11_5_", x, ".bed"))
+  file.path <- file.path("statepaintr_data", "enhancer_predictions", "DELTA", paste0("DELTA_pred_E11_5_", x, ".bed"))
   x <- read_tsv(file.path, col_names = FALSE)
   x <- GRanges(seqnames = x$X1,
                ranges = IRanges(start = x$X2,
@@ -497,7 +497,7 @@ rfecs.enhancers <- c("neural tube" = "NT",
                        limb          = "LM",
                        heart         = "HT")
 rfecs.enhancers <- lapply(rfecs.enhancers, function(x) {
-  file.path <- file.path("data", "enhancer_predictions", "RFECS", paste0("RFECS_pred_E11_5_", x, ".bed"))
+  file.path <- file.path("statepaintr_data", "enhancer_predictions", "RFECS", paste0("RFECS_pred_E11_5_", x, ".bed"))
   x <- read_tsv(file.path, col_names = FALSE)
   x <- GRanges(seqnames = x$X1,
                ranges = IRanges(start = x$X2,
@@ -562,7 +562,7 @@ csiann.enhancers <- c("neural tube" = "NT",
                        limb          = "LM",
                        heart         = "HT")
 csiann.enhancers <- lapply(csiann.enhancers, function(x) {
-  file.path <- file.path("data", "enhancer_predictions", "CSIANN", paste0("CSIANN_pred_E11_5_", x, ".bed"))
+  file.path <- file.path("statepaintr_data", "enhancer_predictions", "CSIANN", paste0("CSIANN_pred_E11_5_", x, ".bed"))
   x <- read_tsv(file.path, col_names = FALSE)
   x <- GRanges(seqnames = x$X1,
                ranges = IRanges(start = x$X2,
@@ -654,9 +654,9 @@ The enhancer predictions that EnhancerFinder generates only has a single categor
 ```{r}
 download.file("http://dx.doi.org/10.1371/journal.pcbi.1003677.s018", destfile = "data/enhancerfinder.predictions.zip")
 unzip("data/enhancerfinder.predictions.zip", exdir = file.path("data", "enhancer_predictions", "enhancerfinder"))
-l.ef.enhancer <- read.delim(file.path("data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_limb_hg19.bed"))
-h.ef.enhancer <- read.delim(file.path("data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_heart_hg19.bed"))
-b.ef.enhancer <- read.delim(file.path("data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_brain_hg19.bed"))
+l.ef.enhancer <- read.delim(file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_limb_hg19.bed"))
+h.ef.enhancer <- read.delim(file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_heart_hg19.bed"))
+b.ef.enhancer <- read.delim(file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_brain_hg19.bed"))
 enhancerfinder.enhancers <- list(h.ef.enhancer, b.ef.enhancer, l.ef.enhancer, b.ef.enhancer)
 enhancerfinder.enhancers <- lapply(enhancerfinder.enhancers, function(x) {
   x <- GRanges(seqnames = x$X.chromosome,
@@ -797,7 +797,7 @@ knitr::kable(pauprg)
 
 # Locus- and tissue-specific enrichment of Parkinson's GWAS variants
 ```{r, fig_width = 7, fig_height = 5}
-pd.enrichment <- read.delim("data/PD.enrichment.27461410.txt", sep = "\t", header = TRUE)
+pd.enrichment <- read.delim("statepaintr_data/PD.enrichment.27461410.txt", sep = "\t", header = TRUE)
 head(pd.enrichment)
 enrich.plot <- ggplot(pd.enrichment, aes(name, difference, group = color)) +
   geom_pointrange(aes(ymin = lower, ymax = upper, color = color), fatten = 1, size = 1.2) +
@@ -824,7 +824,7 @@ enrich.plot
 ## Comparing Models 
 Enrichment calculations were done as in section above using either of two different state models (Model 1 and Model 2) from StateHub, "Default" and "Focused Poised Promoter", which differ in the treatment of poised promoters. Each plot is made using the same y axis range for comparison and emphasizes that one model is clearly more selective than the other. Both models clearly detect enrichment of hypermethylated probes in the poised state. Model 2 is more selective than model 1 in its definition of poised promoter.
 ```{r message = FALSE}
-enrichment.out <- read_tsv("data/methylation.enrichment.txt")
+enrichment.out <- read_tsv("statepaintr_data/methylation.enrichment.txt")
 enrichment.out <- enrichment.out[enrichment.out$type != "ENCODE2012", ]
 head(enrichment.out)
 ```
