@@ -245,9 +245,9 @@ for (tissue in names(mouse.embryo.states)) {
   olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
   mcols(vista.enhancers.test)$score <- 0
   mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = calc_auprg(prg_curve)
-  convex_hull = prg_convex_hull(prg_curve)
+  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
+  auprg = StatePaintR:::calc_auprg(prg_curve)
+  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
   plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
   names(plot.tissue) <- tissue
   plot.data.sp <- c(plot.data.sp, plot.tissue)
@@ -324,9 +324,9 @@ for (tissue in names(encode.enhancers)) {
   olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
   mcols(vista.enhancers.test)$score <- 0
   mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = calc_auprg(prg_curve)
-  convex_hull = prg_convex_hull(prg_curve)
+  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
+  auprg = StatePaintR:::calc_auprg(prg_curve)
+  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
   plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
   names(plot.tissue) <- tissue
   plot.data.encode <- c(plot.data.encode, plot.tissue)
@@ -392,9 +392,9 @@ for (tissue in names(reptile.enhancers)) {
   olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
   mcols(vista.enhancers.test)$score <- 0
   mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = calc_auprg(prg_curve)
-  convex_hull = prg_convex_hull(prg_curve)
+  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
+  auprg = StatePaintR:::calc_auprg(prg_curve)
+  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
   plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
   names(plot.tissue) <- tissue
   plot.data.reptile <- c(plot.data.reptile, plot.tissue)
@@ -456,9 +456,9 @@ for (tissue in names(delta.enhancers)) {
   olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
   mcols(vista.enhancers.test)$score <- 0
   mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = calc_auprg(prg_curve)
-  convex_hull = prg_convex_hull(prg_curve)
+  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
+  auprg = StatePaintR:::calc_auprg(prg_curve)
+  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
   plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
   names(plot.tissue) <- tissue
   plot.data.delta <- c(plot.data.delta, plot.tissue)
@@ -521,9 +521,9 @@ for (tissue in names(rfecs.enhancers)) {
   olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
   mcols(vista.enhancers.test)$score <- 0
   mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = calc_auprg(prg_curve)
-  convex_hull = prg_convex_hull(prg_curve)
+  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
+  auprg = StatePaintR:::calc_auprg(prg_curve)
+  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
   plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
   names(plot.tissue) <- tissue
   plot.data.rfecs <- c(plot.data.rfecs, plot.tissue)
@@ -586,9 +586,9 @@ for (tissue in names(csiann.enhancers)) {
   olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
   mcols(vista.enhancers.test)$score <- 0
   mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = calc_auprg(prg_curve)
-  convex_hull = prg_convex_hull(prg_curve)
+  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
+  auprg = StatePaintR:::calc_auprg(prg_curve)
+  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
   plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
   names(plot.tissue) <- tissue
   plot.data.csiann <- c(plot.data.csiann, plot.tissue)
@@ -680,9 +680,9 @@ for (tissue in names(enhancerfinder.enhancers)) {
   olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
   mcols(vista.enhancers.test)$score <- 0
   mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = calc_auprg(prg_curve)
-  convex_hull = prg_convex_hull(prg_curve)
+  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
+  auprg = StatePaintR:::calc_auprg(prg_curve)
+  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
   plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
   names(plot.tissue) <- tissue
   plot.data.enhancerfinder <- c(plot.data.enhancerfinder, plot.tissue)
