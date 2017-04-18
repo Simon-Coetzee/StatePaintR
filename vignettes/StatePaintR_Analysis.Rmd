@@ -13,7 +13,7 @@ output:
     number_sections: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{StatePaintR - An Introduction}
+  %\VignetteIndexEntry{StatePaintR}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -28,6 +28,7 @@ The purpose of this document is to generate, from the data included here, many o
 Genome annotation is critical to understand the function of disease variants, especially for clinical applications. To meet this need there are segmentations available from public consortia reflecting varying unsupervised approaches to functional annotation based on epigenetics data, but there remains a need for transparent, reproducible, and easily interpreted genomic maps of the functional biology of chromatin. We introduce here methods for defining chromatin state with a combinatorial epigenomic model using an annotation tool, StatePaintR and a website database, StateHub. Annotations are fully documented with change history and versioning, authorship information, and original source files. The tool calculates quantitative state scores based on genome-wide ranking, allowing prioritization and enrichment testing, facilitating quantitative analysis. StateHub hosts annotation tracks for major public consortia as a resource, and allows users to submit their own alternative models.
 
 A preprint is availible on [bioRxiv](http://biorxiv.org/content/early/2017/04/15/127720)
+A more comprehensive overview of of the analysis in the paper can be found in the supplemental [Rmarkdown](http://www.statehub.org/statehub_media/statepaintr.nb.html) file on [StateHub](http://www.statehub.org)
 
 # Setup of StatePaintR environment
 
@@ -35,13 +36,8 @@ We begin by loading the required packages, not all of these are required to simp
 
 ```{r, message = FALSE}
 library(GenomicRanges)
-library(biomaRt)
-library(rtracklayer)
 library(RColorBrewer)
 library(ggplot2)
-library(stringr)
-library(tidyr)
-library(dplyr)
 library(httr)
 library(readr)
 library(StatePaintR)
@@ -99,60 +95,12 @@ ExportStatePaintR(states = hmec.states,
 In order to determine a basis for true positive enhancers we use enhancers validated by the [VISTA enhancer browser](https://enhancer.lbl.gov/).
 We can begin by reading the VISTA data from a bed file. The original data comes from the ENCODE [annotation file set ENCSR964TTF](https://www.encodeproject.org/annotations/ENCSR964TTF/)
 ```{r, message = FALSE}
-vista.enhancers <- read_tsv("statepaintr_data/VISTA_invivo_tested.bed", col_names = FALSE)
+vista.enhancers <- read_tsv("statepaintr_data/vista.validated.enhancers.txt", col_names = TRUE)
+vista.enhancers <- GRanges(vista.enhancers)
 vista.enhancers
 ```
 
-This gives us the genomic locations of vista enhancers, in columns 1:3; then the name of the enhancer in 4. Column 5 is True - `1` or False `0` indicating if the enhancer was found to have activity. Columns 7 and 8 are redundant with 2 and 3, column 9 assigns a color based upon column 5. Column 10 indicates the tissues wherein the activity of the enhancer was observed. Since this is a little bit messy, we clean up the format, and covert it to a `GenomicRanges` object for further analysis.
-
-```{r}
-# remove commas and spaces
-vista.validation <- stringr::str_replace(vista.enhancers$X10,
-                                         pattern = "ganglion, cranial",
-                                         replacement = "ganglion-cranial")
-# split on the remaining commas in order retrieve all of the tissues
-vista.validation <- stringr::str_split(vista.validation, ",")
-# remove parenthesis and clarifiying terms
-vista.validation <- lapply(vista.validation, function(x) {
-  x <- stringr::str_replace(x, " \\(.*\\)", "")
-  x <- stringr::str_trim(x, side = "both")
-  return(x)
-})
-# remove brackets and scores
-vista.validation <- lapply(vista.validation, function(x) {
-  x <- stringr::str_replace(x, "\\[.*\\]", "")
-})
-# create an empty matrix with rows representing enhancers, 
-# columns representing tissues that they could be active in
-vista.enhancers.matrix <- matrix(0L,
-                                 nrow = nrow(vista.enhancers),
-                                 ncol = length(unique(unlist(vista.validation))))
-colnames(vista.enhancers.matrix) <- unique(unlist(vista.validation))
-# if an enhancer was found to have activity by VISTA, 
-# indicate that with a 1 in the appropriate tissue
-for (enhancer in seq_along(vista.validation)) {
-  vista.enhancers.matrix[enhancer, vista.validation[[enhancer]]] <- 1L
-}
-# create our Genomic Ranges object
-vista.enhancers <- GRanges(seqnames = vista.enhancers$X1,
-                   ranges = IRanges(start = vista.enhancers$X2,
-                                    end = vista.enhancers$X3),
-                   name = vista.enhancers$X4,
-                   validated = vista.enhancers$X5,
-                   seqinfo = Seqinfo(genome = "mm10"))
-mcols(vista.enhancers) <- cbind(as.data.frame(mcols(vista.enhancers)),
-                                vista.enhancers.matrix)
-vista.enhancers[, 1:4]
-```
-
-We will also create a column that represents the amalgamation of several different tissues: *ear*, *eye*, *branchial arch*, *nose*, and *facial mesenchyme*, that we will be using as the validation set for ChIP-Seq conducted in the *embryonic facial prominence*.
-
-```{r}
-face.vista <- c("ear", "eye", "branchial arch", "nose", "facial mesenchyme")
-e.f.p <- rowSums(as.matrix(mcols(vista.enhancers)[, face.vista])) > 0
-mcols(vista.enhancers)[, "embryonic facial prominence"] <- as.integer(e.f.p)
-vista.enhancers[, 27]
-```
+As you can see, it contains the ranges of the tested enhancers, if they were validated in vivo, and what tissues they were validated in. This file has been slightly modified to include enhancers that may be found in the "embryonic facial prominence", by combining "ear", "eye", "branchial arch", "nose", and "facial mesenchyme".
 
 ## ENCODE ChIP-Seq and DNase-seq data
 Using the data made availible by the ENCODE project we can retrieve data on multiple Histone ChIP-Seq and sometimes DNase-seq for relevent tissues in order to make enhancer predictions.
@@ -195,7 +143,6 @@ mouse.embryo.states <- PaintStates(manifest = manifest,
                                    decisionMatrix = dm, 
                                    scoreStates = TRUE,
                                    progress = FALSE)
-names(mouse.embryo.states) <- str_replace(names(mouse.embryo.states), " embryo", "")
 mouse.embryo.states$heart
 ```
 
@@ -228,7 +175,7 @@ plot.data.sp <- list()
 for (tissue in names(mouse.embryo.states)) {
   predicted.scores <- mouse.embryo.states[[tissue]]
   vista.enhancers.test <- vista.enhancers
-  mcols(vista.enhancers.test) <- data.frame(FOUND=mcols(vista.enhancers.test)[, tissue])
+  mcols(vista.enhancers.test) <- data.frame(FOUND = mcols(vista.enhancers.test)[, tissue])
   vista.enhancers.test <- vista.enhancers.test[-train.enhancers[[tissue]],]
   predicted.scores <- predicted.scores[predicted.scores$state %in% c("EARC", "ARC", "AR", "EAR"), ]
   predicted.scores <- predicted.scores[order(predicted.scores$score, decreasing = TRUE), ]
@@ -236,9 +183,9 @@ for (tissue in names(mouse.embryo.states)) {
   mcols(vista.enhancers.test)$score <- 0
   mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
   prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = StatePaintR:::calc_auprg(prg_curve)
-  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
-  plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
+  auprg <- StatePaintR:::calc_auprg(prg_curve)
+  convex_hull <- StatePaintR:::prg_convex_hull(prg_curve)
+  plot.tissue <- list(list(tissue = tissue, curve = prg_curve, auprg = auprg, hull = convex_hull))
   names(plot.tissue) <- tissue
   plot.data.sp <- c(plot.data.sp, plot.tissue)
 }
@@ -315,9 +262,9 @@ for (tissue in names(encode.enhancers)) {
   mcols(vista.enhancers.test)$score <- 0
   mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
   prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = StatePaintR:::calc_auprg(prg_curve)
-  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
-  plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
+  auprg <- StatePaintR:::calc_auprg(prg_curve)
+  convex_hull <- StatePaintR:::prg_convex_hull(prg_curve)
+  plot.tissue <- list(list(tissue = tissue, curve = prg_curve, auprg = auprg, hull = convex_hull))
   names(plot.tissue) <- tissue
   plot.data.encode <- c(plot.data.encode, plot.tissue)
 }
@@ -345,391 +292,21 @@ encode.convex.hull <- do.call("rbind", encode.convex.hull)
 sapply(plot.data.encode, function(x) x$auprg)
 ```
 
-Continue in this pattern for the remaining enhancer predictions.
+Additional Examples can be found in the supplemental [Rmarkdown](http://www.statehub.org/statehub_media/statepaintr.nb.html) file on [StateHub](http://www.statehub.org)
 
-### REPTILE Enhancer Predictions
-
-Regulatory element prediction based on tissue-specific local epigenetic marks (REPTILE) is described in *[Improved regulatory element prediction based on tissue-specific local epigenomic signatures](http://doi.org/10.1073/pnas.1618353114)*, and integrates histone modification and whole-genome cytosine DNA methylation profiles to identify the precise location of enhancers. This paper also includes results for DELTA, RFECS, and CSI-ANN which we will be compairing against.
-
-```{r, message = FALSE}
-reptile.enhancers <- c("neural tube" = "NT", 
-                       midbrain      = "MB", 
-                       hindbrain     = "HB",
-                       limb          = "LM",
-                       heart         = "HT")
-reptile.enhancers <- lapply(reptile.enhancers, function(x) {
-  file.path <- file.path("statepaintr_data", "enhancer_predictions", "REPTILE", paste0("REPTILE_pred_E11_5_", x, ".bed"))
-  x <- read_tsv(file.path, col_names = FALSE)
-  x <- GRanges(seqnames = x$X1,
-               ranges = IRanges(start = x$X2,
-                                end = x$X3),
-               score = x$X5,
-               enhancername = x$X4)
-  return(x)
-  
-})
-reptile.enhancers$heart
-```
-
-```{r}
-plot.data.reptile <- list()
-for (tissue in names(reptile.enhancers)) {
-  predicted.scores <- reptile.enhancers[[tissue]]
-  vista.enhancers.test <- vista.enhancers
-  mcols(vista.enhancers.test) <- data.frame(FOUND=mcols(vista.enhancers.test)[, tissue])
-  vista.enhancers.test <- vista.enhancers.test[-train.enhancers[[tissue]],]
-  predicted.scores <- predicted.scores[order(predicted.scores$score, decreasing = TRUE), ]
-  olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
-  mcols(vista.enhancers.test)$score <- 0
-  mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = StatePaintR:::calc_auprg(prg_curve)
-  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
-  plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
-  names(plot.tissue) <- tissue
-  plot.data.reptile <- c(plot.data.reptile, plot.tissue)
-}
-```
-
-```{r}
-reptile.precision.recall.gain <- lapply(plot.data.reptile, function(x) {
-  x <- data.frame(TISSUE = x$tissue,
-                  PRECISION = x$curve$precision_gain,
-                  RECALL = x$curve$recall_gain)
-  return(x)
-})
-reptile.precision.recall.gain <- do.call("rbind", reptile.precision.recall.gain)
-
-reptile.convex.hull <- lapply(plot.data.reptile, function(x) {
-  x <- data.frame(TISSUE = x$tissue,
-                  PRECISION = x$hull$precision_gain,
-                  RECALL = x$hull$recall_gain,
-                  FSCORE = x$hull$f_calibrated_score)
-  return(x)
-})
-reptile.convex.hull <- do.call("rbind", reptile.convex.hull)
-
-sapply(plot.data.reptile, function(x) x$auprg)
-```
-
-### DELTA Enhancer Predictions
-DELTA (Distal Enhancer Locating Tool based on AdaBoost) is described in *[DELTA: A Distal Enhancer Locating Tool Based on AdaBoost Algorithm and Shape Features of Chromatin Modifications](http://dx.doi.org/10.1371%2Fjournal.pone.0130622)* and defines a set of non-redundant shape features of histone modifications, which shows high consistency across cell types and can greatly reduce the dimensionality of feature vectors which is then integrated with a machine-learning algorithm AdaBoost to predict enhancers.
-
-```{r, message = FALSE}
-delta.enhancers <- c("neural tube" = "NT", 
-                       midbrain      = "MB", 
-                       hindbrain     = "HB",
-                       limb          = "LM",
-                       heart         = "HT")
-delta.enhancers <- lapply(delta.enhancers, function(x) {
-  file.path <- file.path("statepaintr_data", "enhancer_predictions", "DELTA", paste0("DELTA_pred_E11_5_", x, ".bed"))
-  x <- read_tsv(file.path, col_names = FALSE)
-  x <- GRanges(seqnames = x$X1,
-               ranges = IRanges(start = x$X2,
-                                end = x$X3),
-               score = x$X5,
-               enhancername = x$X4)
-  return(x)
-  
-})
-delta.enhancers$heart
-```
-
-```{r}
-plot.data.delta <- list()
-for (tissue in names(delta.enhancers)) {
-  predicted.scores <- delta.enhancers[[tissue]]
-  vista.enhancers.test <- vista.enhancers
-  mcols(vista.enhancers.test) <- data.frame(FOUND=mcols(vista.enhancers.test)[, tissue])
-  vista.enhancers.test <- vista.enhancers.test[-train.enhancers[[tissue]],]
-  predicted.scores <- predicted.scores[order(predicted.scores$score, decreasing = TRUE), ]
-  olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
-  mcols(vista.enhancers.test)$score <- 0
-  mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = StatePaintR:::calc_auprg(prg_curve)
-  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
-  plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
-  names(plot.tissue) <- tissue
-  plot.data.delta <- c(plot.data.delta, plot.tissue)
-}
-```
-
-```{r}
-delta.precision.recall.gain <- lapply(plot.data.delta, function(x) {
-  x <- data.frame(TISSUE = x$tissue, 
-                  PRECISION = x$curve$precision_gain,
-                  RECALL = x$curve$recall_gain)
-  return(x)
-})
-delta.precision.recall.gain <- do.call("rbind", delta.precision.recall.gain)
-
-delta.convex.hull <- lapply(plot.data.delta, function(x) {
-  x <- data.frame(TISSUE = x$tissue, 
-                  PRECISION = x$hull$precision_gain,
-                  RECALL = x$hull$recall_gain,
-                  FSCORE = x$hull$f_calibrated_score)
-  return(x)
-})
-delta.convex.hull <- do.call("rbind", delta.convex.hull)
-
-sapply(plot.data.delta, function(x) x$auprg)
-```
-
-### RFECS Enhancer Predictions
-
-RFECS (Random Forest based Enhancer identification from Chromatin States) is described in *[RFECS: A Random-Forest Based Algorithm for Enhancer Identification from Chromatin State](http://dx.doi.org/10.1371%2Fjournal.pcbi.1002968)* and is used to predict genome-wide enhancers based on their similarity to the histone modification profiles of p300 binding sites.
-
-```{r, message = FALSE}
-rfecs.enhancers <- c("neural tube" = "NT", 
-                       midbrain      = "MB", 
-                       hindbrain     = "HB",
-                       limb          = "LM",
-                       heart         = "HT")
-rfecs.enhancers <- lapply(rfecs.enhancers, function(x) {
-  file.path <- file.path("statepaintr_data", "enhancer_predictions", "RFECS", paste0("RFECS_pred_E11_5_", x, ".bed"))
-  x <- read_tsv(file.path, col_names = FALSE)
-  x <- GRanges(seqnames = x$X1,
-               ranges = IRanges(start = x$X2,
-                                end = x$X3),
-               score = x$X5,
-               enhancername = x$X4)
-  return(x)
-  
-})
-rfecs.enhancers$heart
-```
-
-```{r}
-plot.data.rfecs <- list()
-for (tissue in names(rfecs.enhancers)) {
-  predicted.scores <- rfecs.enhancers[[tissue]]
-  vista.enhancers.test <- vista.enhancers
-  mcols(vista.enhancers.test) <- data.frame(FOUND=mcols(vista.enhancers.test)[, tissue])
-  vista.enhancers.test <- vista.enhancers.test[-train.enhancers[[tissue]],]
-  predicted.scores <- predicted.scores[order(predicted.scores$score, decreasing = TRUE), ]
-  olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
-  mcols(vista.enhancers.test)$score <- 0
-  mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = StatePaintR:::calc_auprg(prg_curve)
-  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
-  plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
-  names(plot.tissue) <- tissue
-  plot.data.rfecs <- c(plot.data.rfecs, plot.tissue)
-}
-```
-
-```{r}
-rfecs.precision.recall.gain <- lapply(plot.data.rfecs, function(x) {
-  x <- data.frame(TISSUE = x$tissue, 
-                  PRECISION = x$curve$precision_gain,
-                  RECALL = x$curve$recall_gain)
-  return(x)
-})
-rfecs.precision.recall.gain <- do.call("rbind", rfecs.precision.recall.gain)
-
-rfecs.convex.hull <- lapply(plot.data.rfecs, function(x) {
-  x <- data.frame(TISSUE = x$tissue, 
-                  PRECISION = x$hull$precision_gain, 
-                  RECALL = x$hull$recall_gain, 
-                  FSCORE = x$hull$f_calibrated_score)
-  return(x)
-})
-rfecs.convex.hull <- do.call("rbind", rfecs.convex.hull)
-
-sapply(plot.data.rfecs, function(x) x$auprg)
-```
-
-### CSI-ANN Enhancer Predictions
-
-CSI-ANN (chromatin signature identification by artificial neural network) is described in *[Discover regulatory DNA elements using chromatin signatures and artificial neural network](http://dx.doi.org/10.1093/bioinformatics/btq248)* and is a framework that consists of a data transformation and a feature extraction step followed by a classification step using time-delay neural network.
-
-```{r, message = FALSE}
-csiann.enhancers <- c("neural tube" = "NT", 
-                       midbrain      = "MB", 
-                       hindbrain     = "HB",
-                       limb          = "LM",
-                       heart         = "HT")
-csiann.enhancers <- lapply(csiann.enhancers, function(x) {
-  file.path <- file.path("statepaintr_data", "enhancer_predictions", "CSIANN", paste0("CSIANN_pred_E11_5_", x, ".bed"))
-  x <- read_tsv(file.path, col_names = FALSE)
-  x <- GRanges(seqnames = x$X1,
-               ranges = IRanges(start = x$X2,
-                                end = x$X3),
-               score = x$X5,
-               enhancername = x$X4)
-  return(x)
-  
-})
-csiann.enhancers$heart
-```
-
-```{r}
-plot.data.csiann <- list()
-for (tissue in names(csiann.enhancers)) {
-  predicted.scores <- csiann.enhancers[[tissue]]
-  vista.enhancers.test <- vista.enhancers
-  mcols(vista.enhancers.test) <- data.frame(FOUND=mcols(vista.enhancers.test)[, tissue])
-  vista.enhancers.test <- vista.enhancers.test[-train.enhancers[[tissue]],]
-  predicted.scores <- predicted.scores[order(predicted.scores$score, decreasing = TRUE), ]
-  olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
-  mcols(vista.enhancers.test)$score <- 0
-  mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = StatePaintR:::calc_auprg(prg_curve)
-  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
-  plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
-  names(plot.tissue) <- tissue
-  plot.data.csiann <- c(plot.data.csiann, plot.tissue)
-}
-```
-
-```{r}
-csiann.precision.recall.gain <- lapply(plot.data.csiann, function(x) {
-  x <- data.frame(TISSUE = x$tissue, 
-                  PRECISION = x$curve$precision_gain, 
-                  RECALL = x$curve$recall_gain)
-  return(x)
-})
-csiann.precision.recall.gain <- do.call("rbind", csiann.precision.recall.gain)
-
-csiann.convex.hull <- lapply(plot.data.csiann, function(x) {
-  x <- data.frame(TISSUE = x$tissue, 
-                  PRECISION = x$hull$precision_gain,
-                  RECALL = x$hull$recall_gain,
-                  FSCORE = x$hull$f_calibrated_score)
-  return(x)
-})
-csiann.convex.hull <- do.call("rbind", csiann.convex.hull)
-
-sapply(plot.data.csiann, function(x) x$auprg)
-```
-
-### EnhancerFinder enhancer predictions
-Another system of enhancer prediction that we may compare against is [EnhancerFinder](http://dx.doi.org/10.1371/journal.pcbi.1003677), a two-step method for distinguishing developmental enhancers from the genomic background and then predicting their tissue specificity. Among the Supporting Information for the paper are the enhancer predictions made for *brain*, *limb*, and *heart*. These however are indicated in hg19 genomic coordinates, so we will have to get the hg19 coordinates for the VISTA database as well.
-```{r, message = FALSE}
-vista.human <- read_tsv("statepaintr_data/VISTA_invivo_tested_hg19.bed", col_names = FALSE)
-vista.human.validation <- stringr::str_replace(vista.human$X10, "ganglion, cranial", "ganglion-cranial")
-vista.human.validation <- stringr::str_split(vista.human.validation, ",")
-vista.human.validation <- lapply(vista.human.validation, function(x) {
-  x <- stringr::str_replace(x, " \\(.*\\)", "")
-  x <- stringr::str_trim(x, side = "both")
-  return(x)
-})
-vista.human.validation <- lapply(vista.human.validation, function(x) {
-  x <- stringr::str_replace(x, "\\[.*\\]", "")
-})
-vista.human.matrix <- matrix(0L, 
-                             nrow = nrow(vista.human), 
-                             ncol = length(unique(unlist(vista.human.validation))))
-colnames(vista.human.matrix) <- unique(unlist(vista.human.validation))
-for(enhancer in seq_along(vista.human.validation)) {
-  vista.human.matrix[enhancer, vista.human.validation[[enhancer]]] <- 1L
-}
-
-library(GenomicRanges)
-vista.human <- GRanges(seqnames = vista.human$X1,
-                       ranges = IRanges(start = vista.human$X2,
-                                        end = vista.human$X3),
-                       name = vista.human$X4,
-                       validated = vista.human$X5,
-                       seqinfo = Seqinfo(genome = "hg19"))
-
-mcols(vista.human) <- cbind(as.data.frame(mcols(vista.human)), vista.human.matrix)
-vista.human[, 1:4]
-```
-
-The enhancer predictions that EnhancerFinder generates only has a single category for *brain* so we will compare it to both *hindbrain* and *midbrain*, they also made no predictions for neural tube, so we will be excluding EnhancerFinder from that prediction. Beyond that, the procedure is similar to what we did for ENCODE. Starting with creating a GRanges object for the predictions
-```{r}
-download.file("http://dx.doi.org/10.1371/journal.pcbi.1003677.s018", destfile = "statepaintr_data/enhancerfinder.predictions.zip")
-unzip("statepaintr_data/enhancerfinder.predictions.zip", exdir = file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder"))
-l.ef.enhancer <- read.delim(file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_limb_hg19.bed"))
-h.ef.enhancer <- read.delim(file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_heart_hg19.bed"))
-b.ef.enhancer <- read.delim(file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_brain_hg19.bed"))
-enhancerfinder.enhancers <- list(h.ef.enhancer, b.ef.enhancer, l.ef.enhancer, b.ef.enhancer)
-enhancerfinder.enhancers <- lapply(enhancerfinder.enhancers, function(x) {
-  x <- GRanges(seqnames = x$X.chromosome,
-               ranges = IRanges(start = x$start,
-                                end = x$end),
-               score = x$MKL_scores)
-})
-names(enhancerfinder.enhancers) <- c("heart", "hindbrain", "limb", "midbrain")
-enhancerfinder.enhancers$heart
-```
-
-And then comparing those predictions to the VISTA database, this time in hg19.
-```{r}
-plot.data.enhancerfinder <- list()
-for (tissue in names(enhancerfinder.enhancers)) {
-  predicted.scores <- enhancerfinder.enhancers[[tissue]]
-  vista.enhancers.test <- vista.human
-  mcols(vista.enhancers.test) <- data.frame(FOUND=mcols(vista.enhancers.test)[, tissue])
-  vista.enhancers.test <- vista.enhancers.test[-train.enhancers[[tissue]],]
-  predicted.scores <- predicted.scores[order(predicted.scores$score, decreasing = TRUE), ]
-  olaps <- findOverlaps(vista.enhancers.test, predicted.scores, select = "first")
-  mcols(vista.enhancers.test)$score <- 0
-  mcols(vista.enhancers.test)[which(!is.na(olaps)), "score"] <- mcols(predicted.scores[olaps[!is.na(olaps)]])$score
-  prg_curve <- StatePaintR:::create_prg_curve(mcols(vista.enhancers.test)$FOUND, mcols(vista.enhancers.test)$score)
-  auprg = StatePaintR:::calc_auprg(prg_curve)
-  convex_hull = StatePaintR:::prg_convex_hull(prg_curve)
-  plot.tissue <- list(list(tissue = tissue, curve=prg_curve, auprg = auprg, hull = convex_hull))
-  names(plot.tissue) <- tissue
-  plot.data.enhancerfinder <- c(plot.data.enhancerfinder, plot.tissue)
-}
-```
-
-```{r}
-enhancerfinder.precision.recall.gain <- lapply(plot.data.enhancerfinder, function(x) {
-  x <- data.frame(TISSUE = x$tissue, 
-                  PRECISION = x$curve$precision_gain,
-                  RECALL = x$curve$recall_gain)
-  return(x)
-})
-enhancerfinder.precision.recall.gain <- do.call("rbind", enhancerfinder.precision.recall.gain)
-enhancerfinder.convex.hull <- lapply(plot.data.enhancerfinder, function(x) {
-  x <- data.frame(TISSUE = x$tissue, 
-                  PRECISION = x$hull$precision_gain,
-                  RECALL = x$hull$recall_gain, 
-                  FSCORE = x$hull$f_calibrated_score)
-  return(x)
-})
-enhancerfinder.convex.hull <- do.call("rbind", enhancerfinder.convex.hull)
-sapply(plot.data.enhancerfinder, function(x) x$auprg)
-```
-
-## Supplemental Figure 5 - Visualization of Predictions of VISTA Validated enhancers
+## Visualization of Predictions of VISTA Validated enhancers
 We begin by doing a little bit of cleaning up the data to prepare for plotting with ggplot2
-```{r, fig.height=5, fig.width=7}
+```{r, fig_height=5, fig_width=7}
 encode.precision.recall.gain$SOURCE <- "ENCODE"
 sp.precision.recall.gain$SOURCE <- "StatePaintR"
-enhancerfinder.precision.recall.gain$SOURCE <- "EnhancerFinder"
-reptile.precision.recall.gain$SOURCE <- "REPTILE"
-delta.precision.recall.gain$SOURCE <- "DELTA"
-rfecs.precision.recall.gain$SOURCE <- "RFECS"
-csiann.precision.recall.gain$SOURCE <- "CSIANN"
+
 precision.recall.gain <- rbind.data.frame(encode.precision.recall.gain, 
-                                          sp.precision.recall.gain, 
-                                          enhancerfinder.precision.recall.gain, 
-                                          reptile.precision.recall.gain,
-                                          delta.precision.recall.gain,
-                                          rfecs.precision.recall.gain,
-                                          csiann.precision.recall.gain)
+                                          sp.precision.recall.gain)
 
 encode.convex.hull$SOURCE <- "ENCODE"
 sp.convex.hull$SOURCE <- "StatePaintR"
-enhancerfinder.convex.hull$SOURCE <- "EnhancerFinder"
-reptile.convex.hull$SOURCE <- "REPTILE"
-delta.convex.hull$SOURCE <- "DELTA"
-rfecs.convex.hull$SOURCE <- "RFECS"
-csiann.convex.hull$SOURCE <- "CSIANN"
 convex.hull <- rbind.data.frame(encode.convex.hull, 
-                                sp.convex.hull, 
-                                enhancerfinder.convex.hull, 
-                                reptile.convex.hull,
-                                delta.convex.hull,
-                                rfecs.convex.hull,
-                                csiann.convex.hull)
+                                sp.convex.hull)
 
 comboplot <- ggplot(precision.recall.gain, aes(y = PRECISION, x = RECALL, group = SOURCE)) +
   geom_line(aes(color = SOURCE)) +
@@ -742,16 +319,14 @@ comboplot <- ggplot(precision.recall.gain, aes(y = PRECISION, x = RECALL, group 
                                     color = SOURCE), linetype = 2) +
   theme_grey() +
   ylab("Precision Gain") + xlab("Recall Gain") + theme(aspect.ratio=1) +
-  facet_wrap( ~ TISSUE, ncol = 2)
+  facet_wrap( ~ TISSUE, ncol = 3)
 comboplot
 ```
 
 ## Area Under the Precision-Recall-Gain Curve
-From all of this analysis we generate the Area Under the Precision-Recall-Gain Curve (AUPRG) which conveys an expected F1 score on a harmonic scale. Which is Table 2.
+From all of this analysis we generate the Area Under the Precision-Recall-Gain Curve (AUPRG) which conveys an expected F1 score on a harmonic scale.
 ```{r}
-auprg <- data.frame(source = c("ENCODE", "EnhancerFinder", 
-                               "REPTILE", "DELTA", "RFECS", 
-                               "CSIANN", "StatePaintR"),
+auprg <- data.frame(source = c("ENCODE", "StatePaintR"),
                     "neural tube" = NA,
                     midbrain = NA,
                     hindbrain = NA,
@@ -759,60 +334,20 @@ auprg <- data.frame(source = c("ENCODE", "EnhancerFinder",
                     heart = NA,
                     check.names = FALSE)
 encode.auprg <- sapply(plot.data.encode, function(x) x$auprg)
-enhancerfinder.auprg <- sapply(plot.data.enhancerfinder, function(x) x$auprg)
-reptile.auprg <- sapply(plot.data.reptile, function(x) x$auprg)
-delta.auprg <- sapply(plot.data.delta, function(x) x$auprg)
-rfecs.auprg <- sapply(plot.data.rfecs, function(x) x$auprg)
-csiann.auprg <- sapply(plot.data.csiann, function(x) x$auprg)
 statepaintr.auprg <- sapply(plot.data.sp, function(x) x$auprg)
 auprg[auprg$source == "ENCODE", names(encode.auprg)] <- encode.auprg
-auprg[auprg$source == "EnhancerFinder", names(enhancerfinder.auprg)] <- enhancerfinder.auprg
-auprg[auprg$source == "REPTILE", names(reptile.auprg)] <- reptile.auprg
-auprg[auprg$source == "DELTA", names(delta.auprg)] <- delta.auprg
-auprg[auprg$source == "RFECS", names(rfecs.auprg)] <- rfecs.auprg
-auprg[auprg$source == "CSIANN", names(csiann.auprg)] <- csiann.auprg
 auprg[auprg$source == "StatePaintR", names(statepaintr.auprg)] <- statepaintr.auprg
 
 auprg$ave_auprg <- rowSums(auprg[, -1], na.rm = TRUE)/5
-average_rank <- sapply(auprg[, c("neural tube", 
-                                 "midbrain", 
-                                 "hindbrain", 
-                                 "limb", 
-                                 "heart")], function(x) {rank(1-x)})
-auprg$ave_rank <- sapply(split(average_rank, 1:nrow(average_rank)), mean)
 pauprg <- auprg
 pauprg[, -1] <- signif(pauprg[, -1], digits = 2)
 knitr::kable(pauprg)
 ```
 
-# Locus- and tissue-specific enrichment of Parkinson's GWAS variants
-```{r, fig_width = 7, fig_height = 5}
-pd.enrichment <- read.delim("statepaintr_data/PD.enrichment.27461410.txt", sep = "\t", header = TRUE)
-head(pd.enrichment)
-enrich.plot <- ggplot(pd.enrichment, aes(name, difference, group = color)) +
-  geom_pointrange(aes(ymin = lower, ymax = upper, color = color), fatten = 1, size = 1.2) +
-  theme_minimal() +
-  scale_color_identity() +
-  geom_hline(yintercept = 0, color = "#ececec", alpha = 0.2) +
-  theme(axis.text.x = element_blank(),
-        legend.position="none",
-        panel.grid.major.x = element_blank(), panel.grid.minor = element_blank(),
-        panel.background = element_blank(),
-        strip.text.y = element_text(angle = 0, hjust = 0, vjust = 0.5, size = rel(1.5)),
-        strip.text.x = element_text(angle = 270, hjust = 0.5, vjust = 1, size = rel(1.5))) +
-  scale_x_discrete(name = "Sample") +
-  scale_y_continuous(name = "difference", breaks =  c(0, 0.5, 1)) +
-  ggtitle("Enrichment of PD GWAS variants") +
-  coord_cartesian(ylim = c(-0.2,1)) +
-  facet_grid(locus ~ type, scales = "free_x", space = "free_x", switch = "x") +
-  annotate("rect", xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=0,alpha=0.1,fill="black")
-enrich.plot
-```
-
 # Example of model comparisons.
 
 ## Comparing Models 
-Enrichment calculations were done as in section above using either of two different state models (Model 1 and Model 2) from StateHub, "Default" and "Focused Poised Promoter", which differ in the treatment of poised promoters. Each plot is made using the same y axis range for comparison and emphasizes that one model is clearly more selective than the other. Both models clearly detect enrichment of hypermethylated probes in the poised state. Model 2 is more selective than model 1 in its definition of poised promoter.
+Enrichment calculations were done using either of two different state models (Model 1 and Model 2) from StateHub, "Default" and "Focused Poised Promoter", which differ in the treatment of poised promoters. Each plot is made using the same y axis range for comparison and emphasizes that one model is clearly more selective than the other. Both models clearly detect enrichment of hypermethylated probes in the poised state. Model 2 is more selective than model 1 in its definition of poised promoter.
 ```{r message = FALSE}
 enrichment.out <- read_tsv("statepaintr_data/methylation.enrichment.txt")
 enrichment.out <- enrichment.out[enrichment.out$type != "ENCODE2012", ]
