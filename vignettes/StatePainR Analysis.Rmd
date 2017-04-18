@@ -105,7 +105,7 @@ ExportStatePaintR(states = hmec.states,
                   output.dir = "data/HMEC/")
 ```
 
-# Table 2 - Performance of enhancer predictions
+# Performance of enhancer predictions
 ## VISTA validated enhancers
 In order to determine a basis for true positive enhancers we use enhancers validated by the [VISTA enhancer browser](https://enhancer.lbl.gov/).
 We can begin by reading the VISTA data from a bed file. The original data comes from the ENCODE [annotation file set ENCSR964TTF](https://www.encodeproject.org/annotations/ENCSR964TTF/)
@@ -796,7 +796,7 @@ pauprg[, -1] <- signif(pauprg[, -1], digits = 2)
 knitr::kable(pauprg)
 ```
 
-#Figure 3 - Locus- and tissue-specific enrichment of Parkinson's GWAS variants
+# Locus- and tissue-specific enrichment of Parkinson's GWAS variants
 ```{r, fig_width = 7, fig_height = 5}
 pd.enrichment <- read.delim("data/PD.enrichment.27461410.txt", sep = "\t", header = TRUE)
 head(pd.enrichment)
@@ -820,7 +820,7 @@ enrich.plot <- ggplot(pd.enrichment, aes(name, difference, group = color)) +
 enrich.plot
 ```
 
-#Figure 4 - Example of model comparisons.
+# Example of model comparisons.
 
 ## Comparing Models 
 Enrichment calculations were done as in section above using either of two different state models (Model 1 and Model 2) from StateHub, "Default" and "Focused Poised Promoter", which differ in the treatment of poised promoters. Each plot is made using the same y axis range for comparison and emphasizes that one model is clearly more selective than the other. Both models clearly detect enrichment of hypermethylated probes in the poised state. Model 2 is more selective than model 1 in its definition of poised promoter.
