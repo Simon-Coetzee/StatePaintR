@@ -61,7 +61,6 @@ GetBioFeatures <- function(manifest, dm, my.seqinfo) {
                                        feature = base::rep.int(name, nrow(xf)),
                                        signalValue = xf$signalValue,
                                        seqinfo = s.info))
-                         if (inherits(xf, "try-error")) {browser()}
                          return(xf)
                        }, s.info = my.seqinfo)
   } else {
@@ -354,25 +353,25 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, description = NUL
     writeLines(df.json, con = file.path(output.dir, "manifest.json"))
     return(invisible(jlist))
   } else if (as == "autosql") {
-	  for (sample.i in 1:nrow(df)) {
-	    df.i <- df[sample.i, ]
-	    sample.name <- df.i[, "name"]
-	    outfile <- file(file.path(output.dir, paste0(sample.name, ".manifest.as")), open = "w+")
-	    writeLines(paste0('table', ' "', sample.name, '"'), con = outfile)
-	    writeLines(paste0('"', df.i[, "description"], '"'), con = outfile)
-	    writeLines("(", con = outfile)
-	    writeLines(paste("string", "chrom;", '"Reference sequence chromosome or scaffold"', sep = "\t"), con = outfile)
-	    writeLines(paste("uint", "chromStart;", '"Start position of feature on chromosome"', sep = "\t"), con = outfile)
-	    writeLines(paste("uint", "chromEnd;", '"End position of feature on chromosome"', sep = "\t"), con = outfile)
-	    writeLines(paste("string", "name;", '"Label of Segment"', sep = "\t"), con = outfile)
-	    writeLines(paste("uint", "score;", '"Score"', sep = "\t"), con = outfile)
-	    writeLines(paste("char[1]", "strand;", '"+ or - for strand . for unstranded"', sep = "\t"), con = outfile)
-	    writeLines(paste("uint", "thickStart;", '"starting position at which the feature is drawn thickly"', sep = "\t"), con = outfile)
-	    writeLines(paste("uint", "thickEnd;", '"ending position at which the feature is drawn thickly"', sep = "\t"), con = outfile)
-	    writeLines(paste("uint", "reserved;", '"Color of Segment coded to Label"', sep = "\t"), con = outfile)
-	    writeLines(")", con = outfile)
-	    close(outfile)
-	  }
+    for (sample.i in 1:nrow(df)) {
+      df.i <- df[sample.i, ]
+      sample.name <- df.i[, "name"]
+      outfile <- file(file.path(output.dir, paste0(sample.name, ".manifest.as")), open = "w+")
+      writeLines(paste0('table', ' "', sample.name, '"'), con = outfile)
+      writeLines(paste0('"', df.i[, "description"], '"'), con = outfile)
+      writeLines("(", con = outfile)
+      writeLines(paste("string", "chrom;", '"Reference sequence chromosome or scaffold"', sep = "\t"), con = outfile)
+      writeLines(paste("uint", "chromStart;", '"Start position of feature on chromosome"', sep = "\t"), con = outfile)
+      writeLines(paste("uint", "chromEnd;", '"End position of feature on chromosome"', sep = "\t"), con = outfile)
+      writeLines(paste("string", "name;", '"Label of Segment"', sep = "\t"), con = outfile)
+      writeLines(paste("uint", "score;", '"Score"', sep = "\t"), con = outfile)
+      writeLines(paste("char[1]", "strand;", '"+ or - for strand . for unstranded"', sep = "\t"), con = outfile)
+      writeLines(paste("uint", "thickStart;", '"starting position at which the feature is drawn thickly"', sep = "\t"), con = outfile)
+      writeLines(paste("uint", "thickEnd;", '"ending position at which the feature is drawn thickly"', sep = "\t"), con = outfile)
+      writeLines(paste("uint", "reserved;", '"Color of Segment coded to Label"', sep = "\t"), con = outfile)
+      writeLines(")", con = outfile)
+      close(outfile)
+    }
     return(invisible(df))
   } else {
     stop("argument 'as' must be either 'autosql' or 'json'")

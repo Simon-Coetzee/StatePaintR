@@ -783,7 +783,7 @@ auprg[auprg$source == "RFECS", names(rfecs.auprg)] <- rfecs.auprg
 auprg[auprg$source == "CSIANN", names(csiann.auprg)] <- csiann.auprg
 auprg[auprg$source == "StatePaintR", names(statepaintr.auprg)] <- statepaintr.auprg
 
-auprg$ave_auprg <- rowSums(auprg[, -1], na.rm = T)/5
+auprg$ave_auprg <- rowSums(auprg[, -1], na.rm = TRUE)/5
 average_rank <- sapply(auprg[, c("neural tube", 
                                  "midbrain", 
                                  "hindbrain", 
