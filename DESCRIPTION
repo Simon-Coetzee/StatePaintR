@@ -29,6 +29,5 @@ Suggests: knitr,
     biomaRt,
     RColorBrewer,
     ggplot2,
-    devtools,
-    prg
+    devtools
 VignetteBuilder: knitr
