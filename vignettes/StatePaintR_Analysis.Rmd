@@ -45,7 +45,6 @@ library(dplyr)
 library(httr)
 library(readr)
 library(devtools)
-library(prg)
 ```
 
 And then we install StatePaintR, currently from [GitHub](https://github.com/Simon-Coetzee/StatePaintr).
