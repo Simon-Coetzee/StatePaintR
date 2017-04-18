@@ -18,15 +18,6 @@
 #' @param TN number of true negatives, can be a vector
 #' @return Precision Gain (a numeric value less than or equal to 1; or -Inf or NaN, see the details below)
 #' @details Precision Gain (PrecGain) quantifies by how much precision is improved over the default precision of the always positive predictor, equal to the proportion of positives (pi). PrecGain=1 stands for maximal improvement (Prec=1) and PrecGain=0 stands for no improvement (Prec=pi). If Prec=0, then PrecGain=-Inf. It can happen that PrecGain=NaN, for instance if there are no positives (TP=0 and FN=0) and TN>0.
-#' @examples
-#' precision_gain(3,0,1,2)
-#' # [1] 0.6666667
-#' TP = c(0,2,3)
-#' FN = 3-TP
-#' FP = c(0,1,2)
-#' TN = 2-FP
-#' precision_gain(TP,FN,FP,TN)
-#' # [1]  NaN 0.25 0.00
 precision_gain = function(TP,FN,FP,TN) {
   n_pos = TP+FN
   n_neg = FP+TN
@@ -44,15 +35,6 @@ precision_gain = function(TP,FN,FP,TN) {
 #' @param TN number of true negatives, can be a vector
 #' @return Recall Gain (a numeric value less than or equal to 1; or -Inf or NaN, see the details below)
 #' @details Recall Gain (RecGain) quantifies by how much recall is improved over the recall equal to the proportion of positives (pi). RecGain=1 stands for maximal improvement (Rec=1) and RecGain=0 stands for no improvement (Rec=pi). If Rec=0, then RecGain=-Inf. It can happen that RecGain=NaN, for instance if there are no negatives (FP=0 and TN=0) and FN>0 and TP=0.
-#' @examples
-#' recall_gain(3,0,1,2)
-#' # [1] 1
-#' TP = c(0,2,3)
-#' FN = 3-TP
-#' FP = c(0,1,2)
-#' TN = 2-FP
-#' recall_gain(TP,FN,FP,TN)
-#' # [1]  -Inf 0.25 1.00
 recall_gain = function(TP,FN,FP,TN) {
   n_pos = TP+FN
   n_neg = FP+TN
@@ -139,25 +121,6 @@ recall_gain = function(TP,FN,FP,TN) {
 #' @param neg_scores vector of scores for the negative class, where a higher score indicates a higher probability to be a negative (by default, equal to -pos_scores)
 #' @return A data.frame which lists the points on the PRG curve with the following columns: pos_score, neg_score, TP, FP, FN, TN, precision_gain, recall_gain, is_crossing and in_unit_square. All the points are listed in the order of increasing thresholds on the score to be positive (the ties are broken by decreasing thresholds on the score to be negative).
 #' @details The PRG-curve is built by considering all possible score thresholds, starting from -Inf and then using all scores that are present in the given data. The results are presented as a data.frame which includes the following columns: pos_score, neg_score, TP, FP, FN, TN, precision_gain, recall_gain, is_crossing and in_unit_square. The resulting points include the points where the PRG curve crosses the y-axis and the positive half of the x-axis. The added points have is_crossing=1 whereas the actual PRG points have is_crossing=0. To help in visualisation and calculation of the area under the curve the value in_unit_square=1 marks that the point is within the unit square [0,1]x[0,1], and otherwise, in_unit_square=0.
-#' @examples
-#' create_prg_curve(c(1,1,0,0,1,0),c(0.8,0.8,0.6,0.4,0.4,0.2))
-#' #   pos_score neg_score  TP FP  FN TN precision_gain recall_gain is_crossing in_unit_square
-#' # 1      -Inf       Inf 0.0  0 3.0  3            NaN        -Inf           0              0
-#' # 2       NaN       NaN 1.5  0 1.5  3      1.0000000         0.0           1              1
-#' # 3       0.8      -0.8 2.0  0 1.0  3      1.0000000         0.5           0              1
-#' # 4       0.6      -0.6 2.0  1 1.0  2      0.5000000         0.5           0              1
-#' # 5       0.4      -0.4 3.0  2 0.0  1      0.3333333         1.0           0              1
-#' # 6       0.2      -0.2 3.0  3 0.0  0      0.0000000         1.0           0              1
-#'
-#' create_prg_curve(c(1,1,0,0,1,0),c(1,1,1,1e-20,1e-40,1e-60),c(0,1e-20,1e-20,1,1,1))
-#' #   pos_score neg_score  TP  FP  FN  TN precision_gain recall_gain is_crossing in_unit_square
-#' # 1      -Inf       Inf 0.0 0.0 3.0 3.0            NaN        -Inf           0              0
-#' # 2     1e+00     0e+00 1.0 0.0 2.0 3.0      1.0000000        -1.0           0              0
-#' # 3     1e+00     5e-21 1.5 0.5 1.5 2.5      0.6666667         0.0           1              1
-#' # 4     1e+00     1e-20 2.0 1.0 1.0 2.0      0.5000000         0.5           0              1
-#' # 5     1e-20     1e+00 2.0 2.0 1.0 1.0      0.0000000         0.5           0              1
-#' # 6     1e-40     1e+00 3.0 2.0 0.0 1.0      0.3333333         1.0           0              1
-#' # 7     1e-60     1e+00 3.0 3.0 0.0 0.0      0.0000000         1.0           0              1
 create_prg_curve = function(labels,pos_scores,neg_scores=-pos_scores) {
   create_crossing_points = TRUE
   n = length(labels)
@@ -190,9 +153,6 @@ create_prg_curve = function(labels,pos_scores,neg_scores=-pos_scores) {
 #' @param prg_curve the data structure resulting from the function create_prg_curve
 #' @return A numeric value representing the area under the Precision-Recall-Gain curve.
 #' @details This function calculates the area under the Precision-Recall-Gain curve, taking into account only the part of the curve with non-negative recall gain. The regions with negative precision gain (PRG-curve under the x-axis) contribute as negative area.
-#' @examples
-#' calc_auprg(create_prg_curve(c(1,1,0,0,1,0),c(0.8,0.8,0.6,0.4,0.4,0.2)))
-#' # [1] 0.7083333
 calc_auprg = function(prg_curve) {
   area = 0
   for (i in 2:nrow(prg_curve)) {
@@ -210,10 +170,6 @@ calc_auprg = function(prg_curve) {
 #' This function creates the convex hull of the Precision-Recall-Gain curve resulting from the function create_prg_curve and calculates the F-calibrated scores. More information on Precision-Recall-Gain curves and how to cite this work is available at http://www.cs.bris.ac.uk/~flach/PRGcurves/.
 #' @param prg_curve the data structure resulting from the function create_prg_curve
 #' @return the data.frame representing the convex hull
-#' @examples
-#' labels = c(1,1,1,0,1,1,1,1,1,1,0,1,1,1,0,1,0,0,1,0,0,0,1,0,1)
-#' scores = (25:1)/25
-#' prg_convex_hull(create_prg_curve(labels,scores))
 prg_convex_hull = function(prg_curve) {
   y = prg_curve$precision_gain
   x = prg_curve$recall_gain
