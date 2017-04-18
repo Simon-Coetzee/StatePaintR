@@ -18,7 +18,8 @@
 \item{object}{decisionMatrix.}
 }
 \value{
-an object of class decisionMatrix, normally made in response to a query to StateHub with \code{\link{get.decision.matrix}}
+an object of class decisionMatrix, normally made in response to a
+  query to StateHub with \code{\link{get.decision.matrix}}
 }
 \description{
 decisionMatrix class
@@ -45,10 +46,13 @@ decisionMatrix class
 
 \item{\code{description}}{character. A short description of the model.}
 
-\item{\code{abstraction.layer}}{list. A description of the relationship between the precise data type (e.g. a chromatin mark like H3K27ac)
-and feature describing the functional category in the decision.matrix (e.g. Regulatory).}
+\item{\code{abstraction.layer}}{list. A description of the relationship between the
+precise data type (e.g. a chromatin mark like H3K27ac) and feature
+describing the functional category in the decision.matrix (e.g.
+Regulatory).}
 
-\item{\code{decision.matrix}}{matrix. The description of what combination of features are required to call a state.}
+\item{\code{decision.matrix}}{matrix. The description of what combination of features
+are required to call a state.}
 
 \item{\code{state.colors}}{character. The color to assign to each state.}
 }}

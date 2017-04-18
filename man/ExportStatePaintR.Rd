@@ -9,10 +9,11 @@ ExportStatePaintR(states, decisionMatrix, output.dir, progress = TRUE)
 \arguments{
 \item{states}{A GRangesList produced by \code{\link{PaintStates}}}
 
-\item{decisionMatrix}{The \code{\linkS4class{decisionMatrix}} object used to produce the states}
+\item{decisionMatrix}{The \code{\linkS4class{decisionMatrix}} object used to
+produce the states}
 
-\item{output.dir}{A character string indicating the directory to save the exported states.
-The directory will be created if it does not exist.}
+\item{output.dir}{A character string indicating the directory to save the
+exported states. The directory will be created if it does not exist.}
 
 \item{progress}{logical; show progress bar and timing details?}
 }
