@@ -54,13 +54,14 @@ GetBioFeatures <- function(manifest, dm, my.seqinfo) {
                          }
                          name <- paste(x$SAMPLE, x$MARK, sep = "_")
                          if (ncol(xf) < 7) xf$signalValue <- NA
-                         xf <- GRanges(seqnames = xf$chr,
+                         xf <- try(GRanges(seqnames = xf$chr,
                                        ranges = IRanges(start = xf$start + 1L,
                                                         end = xf$end),
                                        strand = "*",
                                        feature = base::rep.int(name, nrow(xf)),
                                        signalValue = xf$signalValue,
-                                       seqinfo = s.info)
+                                       seqinfo = s.info))
+                         if (inherits(xf, "try-error")) {browser()}
                          return(xf)
                        }, s.info = my.seqinfo)
   } else {
