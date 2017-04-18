@@ -652,8 +652,8 @@ vista.human[, 1:4]
 
 The enhancer predictions that EnhancerFinder generates only has a single category for *brain* so we will compare it to both *hindbrain* and *midbrain*, they also made no predictions for neural tube, so we will be excluding EnhancerFinder from that prediction. Beyond that, the procedure is similar to what we did for ENCODE. Starting with creating a GRanges object for the predictions
 ```{r}
-download.file("http://dx.doi.org/10.1371/journal.pcbi.1003677.s018", destfile = "data/enhancerfinder.predictions.zip")
-unzip("data/enhancerfinder.predictions.zip", exdir = file.path("data", "enhancer_predictions", "enhancerfinder"))
+download.file("http://dx.doi.org/10.1371/journal.pcbi.1003677.s018", destfile = "statepaintr_data/enhancerfinder.predictions.zip")
+unzip("statepaintr_data/enhancerfinder.predictions.zip", exdir = file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder"))
 l.ef.enhancer <- read.delim(file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_limb_hg19.bed"))
 h.ef.enhancer <- read.delim(file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_heart_hg19.bed"))
 b.ef.enhancer <- read.delim(file.path("statepaintr_data", "enhancer_predictions", "enhancerfinder", "enhancerfinder_brain_hg19.bed"))
