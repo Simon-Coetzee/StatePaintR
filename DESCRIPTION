@@ -23,7 +23,10 @@ Imports:
     readr,
     rtracklayer,
     stringr,
-    utils
+    utils,
+    BiocGenerics,
+    Matrix,
+    tidyr
 Suggests: knitr,
     rmarkdown,
     biomaRt,
