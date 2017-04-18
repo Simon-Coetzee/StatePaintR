@@ -2,7 +2,8 @@
 #' manifest.
 #'
 #' @param manifest A character vector containing the filename of the manifest
-#'   file. See details for the expected format
+#'   file. Alternatively, it can be a \code{data.frame}, with the same format as
+#'   the text manifest. See details for the expected format.
 #' @param decisionMatrix An object of class \code{\linkS4class{decisionMatrix}}.
 #' @param scoreStates logical; if scores have been specified in the
 #'   decisionMatrix, should the states be scored?
@@ -12,7 +13,9 @@
 #'   describing the states of all segements for a sample. Each range is
 #'   described by the fields \code{name} indicating the sample, \code{state}
 #'   indicating the state, and optionally \code{score} indicating the score of
-#'   the state
+#'   the state. The \code{\linkS4class{decisionMatrix}} and the manifest used to
+#'   run the segmentation are included in the \code{attributes} of the output
+#'   object.
 #' @details The manifest is a tab delimited file containing five fields; SAMPLE,
 #'   MARK, SRC, BUILD, and FILE. \cr `SAMPLE` refers to the sample to which the
 #'   marks are related, like a cell line, or tissue. \cr `MARK` refers to the
@@ -32,6 +35,8 @@
 #'                       decisionMatrix = poised.promoter.model,
 #'                       scoreStates = FALSE, progress = FALSE)
 #' states
+#' attributes(states)$manifest
+#' attributes(states)$decisionMatrix
 #'
 #' @importFrom GenomicRanges disjoin findOverlaps reduce binnedAverage coverage
 #' @importFrom S4Vectors from to DataFrame
@@ -286,6 +291,7 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   }
 
   attributes(output)$manifest <- samples
+  attributes(output)$decisionMatrix <- decisionMatrix
   done.time <- Sys.time() - start.time
   if (progress) message("processed ", length(samples), " in ", round(done.time, digits = 2), " ", attr(done.time, "units"))
   return(output)
@@ -294,8 +300,6 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 #' Write StatePaintR object to bedfiles
 #'
 #' @param states A GRangesList produced by \code{\link{PaintStates}}
-#' @param decisionMatrix The \code{\linkS4class{decisionMatrix}} object used to
-#'   produce the states
 #' @param output.dir A character string indicating the directory to save the
 #'   exported states. The directory will be created if it does not exist.
 #' @param progress logical; show progress bar and timing details?
@@ -308,19 +312,18 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
 #' @examples
 #' \dontrun{
 #' ExportStatePaintR(states = states,
-#'                   decisionMatrix = poised.promoter.model,
 #'                   output.dir = tempdir())
 #' }
-ExportStatePaintR <- function(states, decisionMatrix, output.dir, progress = TRUE) {
+ExportStatePaintR <- function(states, output.dir, progress = TRUE) {
   start.time <- Sys.time()
   if (missing(output.dir)) { stop("please indicate output directory") }
-  if (missing(decisionMatrix)) { stop("please include decisionMatrix") }
   if (!dir.exists(output.dir)) { dir.create(output.dir) }
   m.data <- attributes(states)$manifest
+  decisionMatrix <- attributes(states)$decisionMatrix
   decisionMatrix@abstraction.layer <- lapply(abstractionLayer(decisionMatrix), tolower)
   m.data <- lapply(m.data, function(manifest, dm = decisionMatrix) {
     manifest <- manifest[tolower(manifest$MARK) %in% unlist(abstractionLayer(dm), use.names = FALSE), , drop = FALSE]
-    if(nrow(manifest) < 1) {
+    if (nrow(manifest) < 1) {
       return(NULL)
     } else {
       return(manifest)

@@ -9,7 +9,8 @@ PaintStates(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE)
 }
 \arguments{
 \item{manifest}{A character vector containing the filename of the manifest
-file. See details for the expected format}
+file. Alternatively, it can be a \code{data.frame}, with the same format as
+the text manifest. See details for the expected format.}
 
 \item{decisionMatrix}{An object of class \code{\linkS4class{decisionMatrix}}.}
 
@@ -23,7 +24,9 @@ A \code{\link{GRangesList}}, each \code{\link{GRanges}} object
   describing the states of all segements for a sample. Each range is
   described by the fields \code{name} indicating the sample, \code{state}
   indicating the state, and optionally \code{score} indicating the score of
-  the state
+  the state. The \code{\linkS4class{decisionMatrix}} and the manifest used to
+  run the segmentation are included in the \code{attributes} of the output
+  object.
 }
 \description{
 Run a StatePaintR decisionMatrix against a group of files listed in a
@@ -50,5 +53,7 @@ states <- PaintStates(manifest = manifest,
                       decisionMatrix = poised.promoter.model,
                       scoreStates = FALSE, progress = FALSE)
 states
+attributes(states)$manifest
+attributes(states)$decisionMatrix
 
 }

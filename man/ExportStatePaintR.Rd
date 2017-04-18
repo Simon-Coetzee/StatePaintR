@@ -4,13 +4,10 @@
 \alias{ExportStatePaintR}
 \title{Write StatePaintR object to bedfiles}
 \usage{
-ExportStatePaintR(states, decisionMatrix, output.dir, progress = TRUE)
+ExportStatePaintR(states, output.dir, progress = TRUE)
 }
 \arguments{
 \item{states}{A GRangesList produced by \code{\link{PaintStates}}}
-
-\item{decisionMatrix}{The \code{\linkS4class{decisionMatrix}} object used to
-produce the states}
 
 \item{output.dir}{A character string indicating the directory to save the
 exported states. The directory will be created if it does not exist.}
@@ -26,7 +23,6 @@ Write StatePaintR object to bedfiles
 \examples{
 \dontrun{
 ExportStatePaintR(states = states,
-                  decisionMatrix = poised.promoter.model,
                   output.dir = tempdir())
 }
 }

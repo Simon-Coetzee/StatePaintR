@@ -44,7 +44,6 @@ library(tidyr)
 library(dplyr)
 library(httr)
 library(readr)
-library(devtools)
 library(StatePaintR)
 ```
 
@@ -84,13 +83,14 @@ hmec.states <- PaintStates(manifest = "statepaintr_data/manifest.hmec.txt",
                            decisionMatrix = decisionmatrix,
                            progress = FALSE)
 hmec.states
+attributes(hmec.states)$manifest
+attributes(hmec.states)$decisionMatrix
 ```
 
 ## Export the segments
 Once we have generated the segmentations, we can write them to disk as a bed file for viewing in a genome browser, or for additional analysis outside of R
 ```{r, eval = FALSE}
 ExportStatePaintR(states = hmec.states,
-                  decisionMatrix = dm,
                   output.dir = "statepaintr_data/HMEC/")
 ```
 
