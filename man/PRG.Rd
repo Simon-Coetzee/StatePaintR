@@ -70,7 +70,7 @@ PRG(states = heart.states,
 Flach, P., & Kull, M. (2015). Precision-Recall-Gain Curves: PR
   Analysis Done Right. In C. Cortes, N. D. Lawrence, D. D. Lee, M. Sugiyama,
   & R. Garnett (Eds.), Advances in Neural Information Processing Systems 28
-  (pp. 838–846). Curran Associates, Inc.
+  (pp. 838-846). Curran Associates, Inc.
 }
 \seealso{
 \url{http://www.cs.bris.ac.uk/~flach/PRGcurves/}
