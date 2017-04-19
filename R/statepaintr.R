@@ -662,14 +662,14 @@ PRG_convex_hull <- function(plot.data) {
 #'   metric. We demonstrate in this paper that this practice is fraught with
 #'   difficulties, mainly because of incoherent scale assumptions -- e.g., the
 #'   area under a PR curve takes the arithmetic mean of precision values whereas
-#'   the Fβ score applies the harmonic mean. We show how to fix this by plotting
+#'   the F_beta score applies the harmonic mean. We show how to fix this by plotting
 #'   PR curves in a different coordinate system, and demonstrate that the new
 #'   Precision-Recall-Gain curves inherit all key advantages of ROC curves. In
 #'   particular, the area under Precision-Recall-Gain curves conveys an expected
 #'   F1 score on a harmonic scale, and the convex hull of a
 #'   Precision-Recall-Gain curve allows us to calibrate the classifier's scores
 #'   so as to determine, for each operating point on the convex hull, the
-#'   interval of β values for which the point optimises Fβ. We demonstrate
+#'   interval of beta values for which the point optimises F_beta. We demonstrate
 #'   experimentally that the area under traditional PR curves can easily favour
 #'   models with lower expected F1 score than others, and so the use of
 #'   Precision-Recall-Gain curves will result in better model selection."
