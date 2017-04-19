@@ -684,7 +684,9 @@ PRG_convex_hull <- function(plot.data) {
 #' @examples
 #' load(system.file("extdata", "heart.states.rda", package = "StatePaintR"))
 #' load(system.file("extdata", "vista.heart.enhancers.rda", package = "StatePaintR"))
-#' PRG(states = heart.states, comparison = heart.enhancers, state.select = c("EAR", "EARC", "AR", "ARC"))
+#' PRG(states = heart.states,
+#'    comparison = heart.enhancers,
+#'    state.select = c("EAR", "EARC", "AR", "ARC"))
 #'
 PRG <- function(states, comparison, state.select = NULL, comparison.select = NULL) {
   if (inherits(states, "GRangesList") || inherits(states, "list")) {
