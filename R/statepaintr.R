@@ -599,3 +599,115 @@ setMethod("stateColors",
           function(object) {
             data.frame(STATE = names(object@state.colors), COLOR = object@state.colors, stringsAsFactors = FALSE)
           })
+
+PRG_helper <- function(state, select, tissue, comparison) {
+  mcols(comparison) <- data.frame(FOUND = mcols(comparison)[, tissue])
+  if ("state" %in% colnames(mcols(state))) {
+    state <- state[state$state %in% select, ]
+  }
+  state <- state[order(state$score, decreasing = TRUE), ]
+  olaps <- findOverlaps(comparison, state, select = "first")
+  mcols(comparison)$score <- 0
+  mcols(comparison)[which(!is.na(olaps)), "score"] <- mcols(state[olaps[!is.na(olaps)]])$score
+  prg_curve <- create_prg_curve(mcols(comparison)$FOUND, mcols(comparison)$score)
+  auprg <- calc_auprg(prg_curve)
+  convex_hull <- prg_convex_hull(prg_curve)
+  plot.tissue <- list(list(tissue = tissue, curve = prg_curve, auprg = auprg, hull = convex_hull))
+  names(plot.tissue) <- tissue
+  return(plot.tissue)
+}
+
+PRG_prg <- function(plot.data) {
+  data.frame(TISSUE = plot.data$tissue,
+             PRECISION = plot.data$curve$precision_gain,
+             RECALL = plot.data$curve$recall_gain)
+}
+
+PRG_convex_hull <- function(plot.data) {
+  data.frame(TISSUE = plot.data$tissue,
+             PRECISION = plot.data$hull$precision_gain,
+             RECALL = plot.data$hull$recall_gain,
+             FSCORE = plot.data$hull$f_calibrated_score)
+}
+
+#' PRG - generate a Precision Recall Gain object to show accuracy of states
+#'
+#' @param states A GRangesList produced by \code{\link{PaintStates}} or a list
+#'   of GRanges, or GRangesList that has a "score" column, and optionally a
+#'   "state" column, that is filtered on if the \code{state.select} argument is
+#'   used
+#' @param comparison A GRanges object that indicates TRUE or FALSE for a
+#'   specific genomic intervals. The names of the the \code{states} object must
+#'   be reflected in the columns of the \code{comparison} object, Where each
+#'   interval is indicated as being validated with 1 or negative with 0
+#' @param state.select A character vector that will filter the states object if
+#'   the states object has a "state" column. For example if the output of
+#'   \code{\link{PaintStates}} has segments with 'EAR' and 'PAR', and one wants
+#'   to select only 'EAR', then \code{state.select = c("EAR")} would only
+#'   compare the 'EAR' scores in \code{states} to the \code{comparison} set.
+#' @param comparison.select a list of numeric vectors that can be used to select
+#'   a subset of \code{comparison} for each element in the list of \code{states}
+#'
+#' @return a list that contains the precision gain and recall gain, the convex
+#'   hull, and the area under the precision recall gain curve (auprg).
+#' @details This code incorprates Precision-Recall-Gain analysis from
+#'   \url{https://github.com/meeliskull/prg/tree/master/R_package}. \cr From the
+#'   abstract of the referenced paper: "Precision-Recall analysis abounds in
+#'   applications of binary classification where true negatives do not add value
+#'   and hence should not affect assessment of the classifier's performance.
+#'   Perhaps inspired by the many advantages of receiver operating
+#'   characteristic (ROC) curves and the area under such curves for
+#'   accuracy-based performance assessment, many researchers have taken to
+#'   report Precision-Recall (PR) curves and associated areas as performance
+#'   metric. We demonstrate in this paper that this practice is fraught with
+#'   difficulties, mainly because of incoherent scale assumptions -- e.g., the
+#'   area under a PR curve takes the arithmetic mean of precision values whereas
+#'   the Fβ score applies the harmonic mean. We show how to fix this by plotting
+#'   PR curves in a different coordinate system, and demonstrate that the new
+#'   Precision-Recall-Gain curves inherit all key advantages of ROC curves. In
+#'   particular, the area under Precision-Recall-Gain curves conveys an expected
+#'   F1 score on a harmonic scale, and the convex hull of a
+#'   Precision-Recall-Gain curve allows us to calibrate the classifier's scores
+#'   so as to determine, for each operating point on the convex hull, the
+#'   interval of β values for which the point optimises Fβ. We demonstrate
+#'   experimentally that the area under traditional PR curves can easily favour
+#'   models with lower expected F1 score than others, and so the use of
+#'   Precision-Recall-Gain curves will result in better model selection."
+#' @seealso \url{http://www.cs.bris.ac.uk/~flach/PRGcurves/}
+#' @references Flach, P., & Kull, M. (2015). Precision-Recall-Gain Curves: PR
+#'   Analysis Done Right. In C. Cortes, N. D. Lawrence, D. D. Lee, M. Sugiyama,
+#'   & R. Garnett (Eds.), Advances in Neural Information Processing Systems 28
+#'   (pp. 838–846). Curran Associates, Inc.
+#'
+#' @export
+#'
+#' @examples
+#' load(system.file("extdata", "heart.states.rda", package = "StatePaintR"))
+#' load(system.file("extdata", "vista.heart.enhancers.rda", package = "StatePaintR"))
+#' PRG(states = heart.states, comparison = heart.enhancers, state.select = c("EAR", "EARC", "AR", "ARC"))
+#'
+PRG <- function(states, comparison, state.select = NULL, comparison.select = NULL) {
+  if (inherits(states, "GRangesList") || inherits(states, "list")) {
+    plot.data <- list()
+    for (tissue in names(states)) {
+      if (!is.null(comparison.select)) {
+        select.comparison <- comparison[comparison.select[[tissue]],]
+      } else {
+        select.comparison <- comparison
+      }
+      state <- states[[tissue]]
+      plot.tissue <- PRG_helper(state, state.select, tissue, select.comparison)
+      plot.data <- c(plot.data, plot.tissue)
+    }
+    precision.recall.gain <- lapply(plot.data, PRG_prg)
+    precision.recall.gain <- do.call("rbind", precision.recall.gain)
+    convex.hull <- lapply(plot.data, PRG_convex_hull)
+    convex.hull <- do.call("rbind", convex.hull)
+    auprg <- sapply(plot.data, function(x) x$auprg)
+  } else {
+    stop("states object must be a list or GRangesList")
+  }
+  return(list(precision.recall.gain = precision.recall.gain,
+              convex.hull = convex.hull,
+              auprg = auprg))
+}
