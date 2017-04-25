@@ -288,7 +288,7 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, description = NUL
   if (missing(output.dir)) { stop("please indicate output directory") }
   if (missing(decisionMatrix)) { stop("please include decisionMatrix") }
   if (!dir.exists(output.dir)) { dir.create(output.dir) }
-  if (inherits(states, "GRangesList")) {
+  if (is(states, "GRangesList")) {
     m.data <- attributes(states)$manifest
   } else {
     m.data <- parse.manifest(states, check = FALSE)

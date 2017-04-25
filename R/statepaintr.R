@@ -518,7 +518,7 @@ doNotScore <- function(decisionMatrix, functionalCategory) {
   if (missing(functionalCategory)) {
     stop("provide a functionalCategory to modify")
   }
-  if (inherits(decisionMatrix, "decisionMatrix")) {
+  if (is(decisionMatrix, "decisionMatrix")) {
     categories <- grep(pattern = functionalCategory, x = names(abstractionLayer(decisionMatrix)))
     if (length(colnames) > 0) {
       for (category.i in categories) {
@@ -557,7 +557,7 @@ doNotSplit <- function(decisionMatrix, functionalCategory) {
   if (missing(functionalCategory)) {
     stop("provide a functionalCategory to modify")
   }
-  if (inherits(decisionMatrix, "decisionMatrix")) {
+  if (is(decisionMatrix, "decisionMatrix")) {
     categories <- grep(pattern = functionalCategory, x = names(abstractionLayer(decisionMatrix)))
     if (length(colnames) > 0) {
       for (category.i in categories) {
