@@ -378,6 +378,37 @@ ExportStateHub <- function(states, decisionMatrix, output.dir, description = NUL
   }
 }
 
+
+PRG_helper <- function(state, select, tissue, comparison) {
+  mcols(comparison) <- data.frame(FOUND = mcols(comparison)[, tissue])
+  if ("state" %in% colnames(mcols(state))) {
+    state <- state[state$state %in% select, ]
+  }
+  state <- state[order(state$score, decreasing = TRUE), ]
+  olaps <- findOverlaps(comparison, state, select = "first")
+  mcols(comparison)$score <- 0
+  mcols(comparison)[which(!is.na(olaps)), "score"] <- mcols(state[olaps[!is.na(olaps)]])$score
+  prg_curve <- create_prg_curve(mcols(comparison)$FOUND, mcols(comparison)$score)
+  auprg <- calc_auprg(prg_curve)
+  convex_hull <- prg_convex_hull(prg_curve)
+  plot.tissue <- list(list(tissue = tissue, curve = prg_curve, auprg = auprg, hull = convex_hull))
+  names(plot.tissue) <- tissue
+  return(plot.tissue)
+}
+
+PRG_prg <- function(plot.data) {
+  data.frame(TISSUE = plot.data$tissue,
+             PRECISION = plot.data$curve$precision_gain,
+             RECALL = plot.data$curve$recall_gain)
+}
+
+PRG_convex_hull <- function(plot.data) {
+  data.frame(TISSUE = plot.data$tissue,
+             PRECISION = plot.data$hull$precision_gain,
+             RECALL = plot.data$hull$recall_gain,
+             FSCORE = plot.data$hull$f_calibrated_score)
+}
+
 setMethod("show",
           signature = signature(object = "decisionMatrix"),
           function(object) {
@@ -398,6 +429,38 @@ setMethod("show",
             }
           })
 
+
+MergeDataSets <- function(input, input.desc, merge.groups, score) {
+  if (length(merge.groups) < 1) {
+    return(list(input = input, input.desc = input.desc))
+  } else {
+    merge.groups <- unique(unlist(merge.groups))
+    for (mark in merge.groups) {
+      input.merge <- unlist(input[names(input) %in% mark])
+      input.names <- unique(input.merge$feature)
+      input <- input[!(names(input) %in% mark)]
+      names(input.merge) <- NULL
+      if (score) {
+        input.merge <- binnedAverage(reduce(input.merge),
+                                     coverage(input.merge, weight = "signalValue"),
+                                     varname = "signalValue")
+        mcols(input.merge)$feature <- paste(input.names, collapse = "|")
+        mcols(input.merge) <- mcols(input.merge)[, c(2,1)]
+      } else {
+        input.merge <- reduce(input.merge)
+        mcols(input.merge)$feature <- paste(input.names, collapse = "|")
+        mcols(input.merge)$signalValue <- NA
+      }
+      input.merge <- GRangesList(input.merge)
+      names(input.merge) <- mark
+      x <- append(input, input.merge)
+      rm(input.merge)
+      input.desc <- input.desc[input.desc != mark]
+      input.desc <- c(input.desc, merged = mark)
+    }
+    return(list(input = input, input.desc = input.desc))
+  }
+}
 
 PaintStatesBenchmark <- function(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE) {
   start.time <- Sys.time()

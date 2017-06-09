@@ -50,6 +50,7 @@
 #' @export
 PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress = TRUE) {
   start.time <- Sys.time()
+  ## check arguments
   if (missing(manifest)) {stop("provide a manifest describing the location of your files \n",
                               "and the mark that was investigated")}
   if (missing(decisionMatrix)) {stop("provide a decisionMatrix object")}
@@ -60,10 +61,11 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
   } else {
     stop("arg: decisionMatrix must be object of class decisionMatrix")
   }
+
+  ## set up samples from manifest
   samples <- parse.manifest(manifest)
   sample.genomes <- as.list(unique(unlist(sapply(samples, "[", "BUILD"))))
-  sample.genomes.names <- sample.genomes
-  sample.genomes.names <- lapply(sample.genomes.names, function(x) {x <- str_replace(tolower(x), "grch38", "hg38")})
+  sample.genomes.names <- lapply(sample.genomes, function(x) {str_replace(tolower(x), "grch38", "hg38")})
   do.seqinfo <- try(Seqinfo(genome = sample.genomes.names[[1]]))
   if (inherits(do.seqinfo, "try-error")) {
     sample.genomes <- lapply(sample.genomes.names, function(x) NULL)
@@ -72,10 +74,15 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     sample.genomes <- lapply(sample.genomes.names, function(x) Seqinfo(genome = x))
   }
   names(sample.genomes) <- sample.genomes.names
+
+  ## prep output + skipped samples
   output <- list()
   skipped <- list()
+
+  ## prep progess bars
   lc <- 0
   if (progress) pb <- txtProgressBar(min = 0, max = length(samples) * 3, style = 3)
+
   for (cell.sample in seq_along(samples)) {
     lc <- lc + 1
     if (progress) setTxtProgressBar(pb, lc)
@@ -89,12 +96,14 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
       lc <- lc + 2
       next()
     }
+    ## normalize sample names
     names(x) <- tolower(names(x))
     inputset <- names(x)
     inputset <- sapply(inputset, function(x, y = deflookup) {
       out <- unlist(y[str_detect(x, paste0(names(y), "$"))], use.names = FALSE)
       return(out)
       })
+    ## filter data sets that do not have a role in the abstractionLayer
     notInTranslationLayer <- sapply(inputset, is.null)
     if (all(sapply(inputset, is.null))) {
       warning(cell.sample[1, "SAMPLE"], " has no MARKs that are present in the translation layer \n",
@@ -106,7 +115,14 @@ PaintStates <- function(manifest, decisionMatrix, scoreStates = FALSE, progress 
     x <- x[!notInTranslationLayer]
     inputset <- inputset[!notInTranslationLayer]
     names(x) <- inputset
+    ## if there are multiple sources of data with the same meaning in the abstractionLayer
+    ## merge them by averaging thier scores across bins
     to.merge <- inputset[duplicated(inputset)]
+
+    merged <- MergeDataSets(input = x, input.desc = inputset, merge.groups = to.merge, score = scoreStates)
+    x <- merged[["input"]]
+    inputset <- merged[["input.desc"]]
+
     if (length(to.merge) >= 1) {
       to.merge <- unique(unlist(to.merge))
       for (mark in to.merge) {
@@ -600,36 +616,6 @@ setMethod("stateColors",
             data.frame(STATE = names(object@state.colors), COLOR = object@state.colors, stringsAsFactors = FALSE)
           })
 
-PRG_helper <- function(state, select, tissue, comparison) {
-  mcols(comparison) <- data.frame(FOUND = mcols(comparison)[, tissue])
-  if ("state" %in% colnames(mcols(state))) {
-    state <- state[state$state %in% select, ]
-  }
-  state <- state[order(state$score, decreasing = TRUE), ]
-  olaps <- findOverlaps(comparison, state, select = "first")
-  mcols(comparison)$score <- 0
-  mcols(comparison)[which(!is.na(olaps)), "score"] <- mcols(state[olaps[!is.na(olaps)]])$score
-  prg_curve <- create_prg_curve(mcols(comparison)$FOUND, mcols(comparison)$score)
-  auprg <- calc_auprg(prg_curve)
-  convex_hull <- prg_convex_hull(prg_curve)
-  plot.tissue <- list(list(tissue = tissue, curve = prg_curve, auprg = auprg, hull = convex_hull))
-  names(plot.tissue) <- tissue
-  return(plot.tissue)
-}
-
-PRG_prg <- function(plot.data) {
-  data.frame(TISSUE = plot.data$tissue,
-             PRECISION = plot.data$curve$precision_gain,
-             RECALL = plot.data$curve$recall_gain)
-}
-
-PRG_convex_hull <- function(plot.data) {
-  data.frame(TISSUE = plot.data$tissue,
-             PRECISION = plot.data$hull$precision_gain,
-             RECALL = plot.data$hull$recall_gain,
-             FSCORE = plot.data$hull$f_calibrated_score)
-}
-
 #' PRG - generate a Precision Recall Gain object to show accuracy of states
 #'
 #' @param states A GRangesList produced by \code{\link{PaintStates}} or a list
@@ -712,4 +698,121 @@ PRG <- function(states, comparison, state.select = NULL, comparison.select = NUL
   return(list(precision.recall.gain = precision.recall.gain,
               convex.hull = convex.hull,
               auprg = auprg))
+}
+
+
+
+#' PlotStates - plotting the results of PaintStates
+#'
+#' @param states A GRangesList produced by \code{\link{PaintStates}} or a list
+#'   of GRanges, or GRangesList that has a "score" column, and optionally a
+#'   "state" column, that is filtered on if the \code{state.select} argument is
+#'   used
+#' @param location A GRanges object of length 1, or a character vector of the
+#'   form: "chr:start-end", e.g., "chr12:51267156-52080611"
+#' @param gene.track A
+#' @param additional.tracks
+#'
+#' @return Plots the states, of the samples in the states object, and if possible the genes in the region
+#' @export
+#' @importFrom Gviz AnnotationTrack GenomeAxisTrack IdeogramTrack
+#'   BiomartGeneRegionTrack plotTracks
+#' @importFrom IRanges subsetByOverlaps
+#' @importFrom GenomeInfoDb genome
+#' @importFrom dplyr left_join
+#' @importFrom GenomeInfoDb seqlevels
+#' @importFrom stringr str_length
+#' @examples
+PlotStates <- function(states, location = NULL, gene.track = NULL, additional.tracks = NULL) {
+  if (is.null(location)) {
+    stop("choose a genomic location to plot")
+  }
+  if (is.character(location)) {
+    location <- GRanges(location)
+  } else if (is(location, "GRanges")) {
+    if (length(location) > 1) stop("location must only be a single genomic location")
+    location <- location
+  } else {
+    stop("location must be either a character vector in the form 'chr:start-end' or a GRanges object of length 1")
+  }
+  dm <- attributes(states)$decisionMatrix
+  my.len <- max(str_length(names(states)))/3
+  atracks <- lapply(states, function(my.range, loc = location, col = stateColors(dm), len = my.len) {
+    my.range <- subsetByOverlaps(my.range, location)
+    my.col <- data.frame(state = mcols(my.range)$state)
+    my.col <- suppressWarnings(left_join(my.col, col, by = c("state" = "STATE"))$COLOR)
+    my.gen <- genome(my.range)[[1]]
+    my.chr <- as.character(unique(seqnames(my.range)))
+    my.name <- mcols(my.range)$name[[1]]
+    atrack <- AnnotationTrack(range = my.range,
+                              feature = as.factor(mcols(my.range)$state),
+                              stacking = "dense",
+                              fill = my.col,
+                              col = NULL,
+                              col.line = NULL,
+                              stackHeight = 1,
+                              shape = "box",
+                              rotation.title = 360,
+                              background.title = "transparent", col.title = "black",
+                              cex.title = 0.5,
+                              name = my.name)
+  })
+  my.genome <- genome(atracks[[1]])
+  my.chr <- seqlevels(location)
+  gtrack <- GenomeAxisTrack()
+  itrack <- IdeogramTrack(genome = my.genome, chromosome = my.chr)
+  if (is.null(gene.track)) {
+    grtrack <- try(BiomartGeneRegionTrack(start = start(location), end = end(location),
+                                          chr = seqlevels(location),
+                                          genome = my.genome,
+                                          col.line = NULL, col = NULL,
+                                          stackHeight = 0.5,
+                                          rotation.title = 360, col.title = "black", cex.title = 0.5,
+                                          filter = list(biotype = c("protein_coding", "lincRNA")),
+                                          transcriptAnnotation = "symbol",
+                                          name = "ENSEMBL genes", stacking = "squish"))
+    trycount <- 1
+    while (inherits(grtrack, "try-error")) {
+      browser()
+      grtrack <- try(BiomartGeneRegionTrack(start = start(location), end = end(location),
+                                            chr = seqlevels(location),
+                                            genome = my.genome,
+                                            col.line = NULL, col = NULL,
+                                            stackHeight = 0.5,
+                                            genome = my.genome,
+                                            rotation.title = 360, col.title = "black", cex.title = 0.5,
+                                            filter = list(biotype = c("protein_coding", "lincRNA"),
+                                                          transcriptAnnotation = "symbol",
+                                                          name = "ENSEMBL genes", stacking = "squish")))
+      if (trycount >= 3) {
+        plotTracks(c(list(itrack, gtrack), c(atracks)), title.width = my.len)
+        warning("could not find GeneRegionTrack on dynamically queried Biomart Ensembl data source\n",
+                "a GeneRegionTrack can be passed manually to the gene.track parameter")
+        return(invisible(c(list(itrack, gtrack), c(atracks))))
+      } else {
+        trycount <- trycount + 1
+      }
+    }
+  } else if (inherits(gene.track, "GeneRegionTrack")) {
+    if (genome(gene.track)[[1]] == my.genome) {
+      grtrack <- gene.track
+    } else {
+      stop("gene.track genome: ", genome(gene.track)[[1]], " does not match states genome: ", my.genome)
+    }
+  } else {
+    stop("gene.track is not a valid GeneRegionTrack")
+  }
+  if (!is.null(additional.tracks)) {
+    if (inherits(additional.tracks, "AnnotationTrack")) {
+      atracks <- c(additional.tracks, atracks)
+    } else {
+      stop("additional.tracks is not a valid AnnotationTrack object")
+    }
+  }
+plotTracks(c(list(itrack, gtrack, grtrack), c(atracks)),
+           collapseTranscripts = "meta",
+           from = start(location),
+           to = end(location),
+           title.width = my.len)
+return(invisible(c(list(itrack, gtrack, grtrack), c(atracks))))
 }

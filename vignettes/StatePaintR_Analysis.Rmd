@@ -25,7 +25,7 @@ The purpose of this document is to generate, from the data included here, many o
 ***
 
 # What is *StateHub / StatePaintR?*
-Genome annotation is critical to understand the function of disease variants, especially for clinical applications. To meet this need there are segmentations available from public consortia reflecting varying unsupervised approaches to functional annotation based on epigenetics data, but there remains a need for transparent, reproducible, and easily interpreted genomic maps of the functional biology of chromatin. We introduce here methods for defining chromatin state with a combinatorial epigenomic model using an annotation tool, StatePaintR and a website database, StateHub. Annotations are fully documented with change history and versioning, authorship information, and original source files. The tool calculates quantitative state scores based on genome-wide ranking, allowing prioritization and enrichment testing, facilitating quantitative analysis. StateHub hosts annotation tracks for major public consortia as a resource, and allows users to submit their own alternative models.
+Genome annotation is critical to understand the function of disease variants, especially for clinical applications. To meet this need there are segmentations available from public consortia reflecting varying unsupervised approaches to functional annotation based on epigenetics data, but there remains a need for transparent, reproducible, and easily interpreted genomic maps of the functional biology of chromatin. We introduce here methods for defining chromatin state with a combinatorial epigenomic model using an annotation tool, StatePaintR and a website database, [StateHub](http://statehub.org/). Annotations are fully documented with change history and versioning, authorship information, and original source files. The tool calculates quantitative state scores based on genome-wide ranking, allowing prioritization and enrichment testing, facilitating quantitative analysis. [StateHub](http://statehub.org/) hosts annotation tracks for major public consortia as a resource, and allows users to submit their own alternative models.
 
 A preprint is availible on [bioRxiv](http://biorxiv.org/content/early/2017/04/15/127720)
 A more comprehensive overview of of the analysis in the paper can be found in the supplemental [Rmarkdown](http://www.statehub.org/statehub_media/statepaintr.nb.html) file on [StateHub](http://www.statehub.org)
@@ -56,7 +56,7 @@ With This complete, we begin analysis.
 # Brief overview of running StatePaintR
 The process of running StatePaintR falls into three basic steps.
 ## Download the decision matrix
-We first download the decision matrix by indicating the model's unique ID as indicated on the statehub website.
+We first download the decision matrix by indicating the model's unique ID as indicated on the [StateHub](http://statehub.org/) website.
 ```{r}
 decisionmatrix <- get.decision.matrix(search = "5813b67f46e0fb06b493ceb0")
 decisionmatrix
@@ -144,6 +144,35 @@ mouse.embryo.states <- PaintStates(manifest = manifest,
                                    scoreStates = TRUE,
                                    progress = FALSE)
 mouse.embryo.states$heart
+mymart <- biomaRt::useMart("ENSEMBL_MART_ENSEMBL", dataset = "mmusculus_gene_ensembl")
+mylocation <- GRanges("chr1:42623508-42754885")
+mygenes <- BiomartGeneRegionTrack(start = start(mylocation), end = end(mylocation),
+                                  chr = seqlevels(mylocation),
+                                  biomart = mymart,
+                                  col.line = NULL, col = NULL,
+                                  stackHeight = 0.5,
+                                  rotation.title = 360, col.title = "black", cex.title = 0.5,
+                                  filter = list(biotype = c("protein_coding", "lincRNA")),
+                                  transcriptAnnotation = "symbol",
+                                  name = "ENSEMBL genes", stacking = "squish")
+genome(mygenes) <- "mm10"
+vista.in.range <- subsetByOverlaps(vista.enhancers, mylocation)
+vista.anno <- AnnotationTrack(range = vista.in.range,
+                              fill = mcols(vista.in.range)$validated + 2,
+                              stacking = "dense",
+                              col = NULL,
+                              col.line = NULL,
+                              stackHeight = 1,
+                              shape = "box",
+                              rotation.title = 360,
+                              background.title = "transparent", col.title = "black",
+                              cex.title = 0.5,
+                              name = "VISTA enhancers")
+
+PlotStates(states = mouse.embryo.states, 
+           location = mylocation, 
+           gene.track = mygenes, 
+           additional.tracks = vista.anno)
 ```
 
 ## Comparing Predictions to VISTA {#train_subset}
@@ -442,7 +471,7 @@ knitr::kable(pauprg)
 # Example of model comparisons.
 
 ## Comparing Models 
-Enrichment calculations were done using either of two different state models (Model 1 and Model 2) from StateHub, "Default" and "Focused Poised Promoter", which differ in the treatment of poised promoters. Each plot is made using the same y axis range for comparison and emphasizes that one model is clearly more selective than the other. Both models clearly detect enrichment of hypermethylated probes in the poised state. Model 2 is more selective than model 1 in its definition of poised promoter.
+Enrichment calculations were done using either of two different state models (Model 1 and Model 2) from [StateHub](http://statehub.org/), "Default" and "Focused Poised Promoter", which differ in the treatment of poised promoters. Each plot is made using the same y axis range for comparison and emphasizes that one model is clearly more selective than the other. Both models clearly detect enrichment of hypermethylated probes in the poised state. Model 2 is more selective than model 1 in its definition of poised promoter.
 ```{r message = FALSE}
 enrichment.out <- read_tsv("statepaintr_data/methylation.enrichment.txt")
 enrichment.out <- enrichment.out[enrichment.out$type != "ENCODE2012", ]
