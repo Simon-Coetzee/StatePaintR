@@ -28,8 +28,7 @@ Imports:
     Matrix,
     tidyr,
     grDevices,
-    Gviz,
-    GenomeInfoDbData
+    Gviz
 Suggests: knitr,
     rmarkdown,
     biomaRt,
