@@ -710,8 +710,8 @@ PRG <- function(states, comparison, state.select = NULL, comparison.select = NUL
 #'   used
 #' @param location A GRanges object of length 1, or a character vector of the
 #'   form: "chr:start-end", e.g., "chr12:51267156-52080611"
-#' @param gene.track A
-#' @param additional.tracks
+#' @param gene.track optionally, an object created by BiomartGeneRegionTrack() to plot the gene context in addition to segmentation.
+#' @param additional.tracks optionally, an object of class "AnnotationTrack" with additional data to plot in addition to segmentation.
 #'
 #' @return Plots the states, of the samples in the states object, and if possible the genes in the region
 #' @export
@@ -723,6 +723,25 @@ PRG <- function(states, comparison, state.select = NULL, comparison.select = NUL
 #' @importFrom GenomeInfoDb seqlevels
 #' @importFrom stringr str_length
 #' @examples
+#' load(system.file("extdata", "heart.states.rda", package = "StatePaintR"))
+#' load(system.file("extdata", "vista.heart.enhancers.rda", package = "StatePaintR"))
+#' mylocation <- GRanges("chr1:42623508-42754885")
+#' vista.in.range <- subsetByOverlaps(heart.enhancers, mylocation)
+#' vista.anno <- AnnotationTrack(range = vista.in.range,
+#'                               fill = mcols(vista.in.range)$validated + 2,
+#'                               stacking = "dense",
+#'                               col = NULL,
+#'                               col.line = NULL,
+#'                               stackHeight = 1,
+#'                               shape = "box",
+#'                               rotation.title = 360,
+#'                               background.title = "transparent", col.title = "black",
+#'                               cex.title = 0.5,
+#'                               name = "VISTA enhancers")
+#' PlotStates(states = heart.states,
+#'            location = mylocation,
+#'            additional.tracks = vista.anno)
+
 PlotStates <- function(states, location = NULL, gene.track = NULL, additional.tracks = NULL) {
   if (is.null(location)) {
     stop("choose a genomic location to plot")
@@ -763,17 +782,16 @@ PlotStates <- function(states, location = NULL, gene.track = NULL, additional.tr
   itrack <- IdeogramTrack(genome = my.genome, chromosome = my.chr)
   if (is.null(gene.track)) {
     grtrack <- try(BiomartGeneRegionTrack(start = start(location), end = end(location),
-                                          chr = seqlevels(location),
+                                          chromosome = seqlevels(location),
                                           genome = my.genome,
                                           col.line = NULL, col = NULL,
                                           stackHeight = 0.5,
                                           rotation.title = 360, col.title = "black", cex.title = 0.5,
-                                          filter = list(biotype = c("protein_coding", "lincRNA")),
+                                          filters = list(biotype = c("protein_coding", "lincRNA")),
                                           transcriptAnnotation = "symbol",
                                           name = "ENSEMBL genes", stacking = "squish"))
     trycount <- 1
     while (inherits(grtrack, "try-error")) {
-      browser()
       grtrack <- try(BiomartGeneRegionTrack(start = start(location), end = end(location),
                                             chr = seqlevels(location),
                                             genome = my.genome,

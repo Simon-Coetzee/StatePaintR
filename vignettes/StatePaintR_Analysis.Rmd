@@ -32,6 +32,15 @@ A more comprehensive overview of of the analysis in the paper can be found in th
 
 # Setup of StatePaintR environment
 
+## *(Optional)* Install the development version from github
+```{r, eval = FALSE}
+source("https://bioconductor.org/biocLite.R")
+biocLite("devtools")
+## Installing from https://github.com/Simon-Coetzee/StatePaintR/
+biocLite("Simon-Coetzee/StatePaintR") 
+```
+
+
 We begin by loading the required packages, not all of these are required to simply run StatePaintR, but they will be necissary for doing some of the analysis that follows.
 
 ```{r, message = FALSE}
@@ -146,6 +155,7 @@ mouse.embryo.states <- PaintStates(manifest = manifest,
 mouse.embryo.states$heart
 mymart <- biomaRt::useMart("ENSEMBL_MART_ENSEMBL", dataset = "mmusculus_gene_ensembl")
 mylocation <- GRanges("chr1:42623508-42754885")
+library(Gviz)
 mygenes <- BiomartGeneRegionTrack(start = start(mylocation), end = end(mylocation),
                                   chr = seqlevels(mylocation),
                                   biomart = mymart,
